@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "IRSTimesheet",
+    "slug": "irs-timesheet",
+    "package": "com.hashturn.irstimesheet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/irs-icon.png",
+    "splash": {
+      "image": "./assets/irs-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "assets/**"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hashturn.irstimesheet",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/irs-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.hashturn.irstimesheet"
+    },
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "bc8048dd-a97e-4da0-b509-2c449eb75c19"
+      }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}

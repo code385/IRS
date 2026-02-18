@@ -1,0 +1,34 @@
+# Firebase Service Account Key (Security - Never commit!)
+firebase-service-account-key.json
+
+# Node modules
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Build files
+dist/
+build/
+*.apk
+*.aab
+*.ipa
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

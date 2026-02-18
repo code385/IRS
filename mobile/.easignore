@@ -1,0 +1,5 @@
+# Exclude from EAS Build upload - keep builds lean & secure
+firebase-service-account-key.json
+*.log
+.expo/
+scripts/
