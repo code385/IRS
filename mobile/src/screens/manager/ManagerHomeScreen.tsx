@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { useTimesheetStore } from '../../store/timesheetStore';
 import AppLayout from '../../components/AppLayout';
@@ -16,14 +17,18 @@ type Props = NativeStackScreenProps<any>;
 const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+
   const weeks = useTimesheetStore((s) => s.weeks);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
 
-  useEffect(() => {
-    loadWeeks();
-  }, [loadWeeks]);
+  useFocusEffect(
+    useCallback(() => {
+      loadWeeks();
+    }, [loadWeeks])
+  );
 
-  const pending = weeks.filter((w) => w.status === 'Submitted').length;
+  // ✅ pending includes Draft too, because manager edit might make it Draft
+  const pending = weeks.filter((w) => w.status === 'Submitted' || w.status === 'Draft').length;
   const approved = weeks.filter((w) => w.status === 'Approved').length;
   const rejected = weeks.filter((w) => w.status === 'Rejected').length;
 
@@ -31,47 +36,46 @@ const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
     <AppLayout>
       <View style={styles.headerBar}>
         <View>
-          <Text style={styles.appTitle}>Timesheet approvals</Text>
-          <Text style={styles.appSubtitle}>Approver dashboard</Text>
+          <Text style={styles.appTitle}>Timesheet Approvals</Text>
+          <Text style={styles.appSubtitle}>Approver Dashboard</Text>
         </View>
 
-        {/* ✅ ONLY ProfileIcon */}
         <View style={styles.headerRight}>
           <ProfileIcon userName={user?.name ?? 'Manager'} onLogout={logout} />
         </View>
       </View>
 
       <View style={styles.statsRow}>
-        <StatCard
-          title="Pending approval"
-          value={String(pending)}
-          tone="warning"
-          onPress={() =>
-            navigation.navigate('ManagerTimesheetList', { status: 'Submitted' })
-          }
-        />
-        <StatCard
-          title="Approved"
-          value={String(approved)}
-          tone="success"
-          onPress={() =>
-            navigation.navigate('ManagerTimesheetList', { status: 'Approved' })
-          }
-        />
-        <StatCard
-          title="Rejected"
-          value={String(rejected)}
-          tone="default"
-          onPress={() =>
-            navigation.navigate('ManagerTimesheetList', { status: 'Rejected' })
-          }
-        />
+        <View style={styles.statCol}>
+          <StatCard
+            title="Pending Approval"
+            value={String(pending)}
+            tone="warning"
+            onPress={() => navigation.navigate('ManagerTimesheetList', { status: 'Submitted' })}
+          />
+        </View>
+        <View style={styles.statCol}>
+          <StatCard
+            title="Approved"
+            value={String(approved)}
+            tone="success"
+            onPress={() => navigation.navigate('ManagerTimesheetList', { status: 'Approved' })}
+          />
+        </View>
+        <View style={styles.statCol}>
+          <StatCard
+            title="Rejected"
+            value={String(rejected)}
+            tone="default"
+            onPress={() => navigation.navigate('ManagerTimesheetList', { status: 'Rejected' })}
+          />
+        </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Pending timesheets</Text>
+      <Text style={styles.sectionTitle}>Pending Timesheets</Text>
 
       <AppButton
-        label="Review pending timesheets"
+        label="Review Pending Timesheets"
         onPress={() => navigation.navigate('PendingTimesheets')}
         style={styles.cta}
       />
@@ -82,39 +86,34 @@ const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   headerBar: {
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  appTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  appSubtitle: {
-    color: '#FFEBEE',
-    marginTop: spacing.xs,
-  },
-  headerRight: {
-    overflow: 'visible',
-  },
+  appTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  appSubtitle: { color: '#FFEBEE', marginTop: spacing.xs },
+
+  headerRight: { overflow: 'visible' },
+
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    marginLeft: -spacing.sm,
+    marginRight: -spacing.sm,
     marginBottom: spacing.lg,
   },
-  sectionTitle: {
-    ...typography.sectionTitle,
-    marginTop: spacing.md,
+  statCol: {
+    width: '33.333%',
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.sm,
     marginBottom: spacing.md,
   },
-  cta: {
-    marginTop: spacing.sm,
-  },
+
+  sectionTitle: { ...typography.sectionTitle, marginTop: spacing.md, marginBottom: spacing.md },
+  cta: { marginTop: spacing.sm },
 });
 
 export default ManagerHomeScreen;

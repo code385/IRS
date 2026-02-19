@@ -70,7 +70,7 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!week) {
     return (
       <AppLayout>
-        <Text style={styles.title}>Timesheet not found</Text>
+        <Text style={styles.title}>Timesheet Not Found</Text>
       </AppLayout>
     );
   }
@@ -94,10 +94,10 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await setWeekStatus(week.id, 'Approved');
       await loadWeeks();
-      Alert.alert('Approved', 'Timesheet approved successfully.');
+      Alert.alert('Approved', 'Timesheet Approved Successfully.');
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to approve.');
+      Alert.alert('Error', e?.message || 'Failed to Approve.');
     }
   };
 

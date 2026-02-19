@@ -66,7 +66,7 @@ const AdminRejectedDetailScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <AppLayout>
-      <Text style={styles.title}>Rejected timesheets</Text>
+      <Text style={styles.title}>Rejected Timesheets</Text>
       <Text style={styles.subtitle}>Manager rejected – see reason below</Text>
       {isLoading && (
         <View style={styles.loading}>
@@ -81,7 +81,7 @@ const AdminRejectedDetailScreen: React.FC<Props> = ({ navigation }) => {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No rejected timesheets</Text>
+              <Text style={styles.emptyText}>No Rejected Timesheets</Text>
             </View>
           ) : null
         }

@@ -8,6 +8,8 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { exportCsvAsFile } from '../../utils/csvExport';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -31,8 +33,10 @@ const statusColors: Record<TimesheetStatus, string> = {
 };
 
 const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 720;
+
   const { weekId } = route.params ?? {};
-  const weeks = useTimesheetStore((s) => s.weeks);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
   const setWeekStatus = useTimesheetStore((s) => s.setWeekStatus);
 
@@ -40,21 +44,27 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [comment, setComment] = useState('');
 
+  const refresh = useCallback(async () => {
+    if (!weekId) return;
+    setIsLoading(true);
+    try {
+      await loadWeeks();
+      const fetched = await getWeekById(weekId);
+      if (fetched) {
+        const name = await getUserById(fetched.employeeId).then((u) => u?.name || 'Unknown');
+        setWeek({ ...fetched, employeeName: name });
+      } else {
+        setWeek(null);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [weekId, loadWeeks]);
+
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      loadWeeks();
-      (async () => {
-        const fetched = await getWeekById(weekId);
-        if (fetched) {
-          const name = await getUserById(fetched.employeeId).then((u) => u?.name || 'Unknown');
-          setWeek({ ...fetched, employeeName: name });
-        } else {
-          setWeek(null);
-        }
-        setIsLoading(false);
-      })();
-    }, [weekId, loadWeeks])
+      refresh();
+    }, [refresh])
   );
 
   if (isLoading) {
@@ -76,6 +86,9 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
   }
 
   const totalHours = week.days.reduce((sum, d) => sum + d.hours, 0);
+  const statusColor = statusColors[week.status] || colors.textSecondary;
+
+  const showApprovalActions = week.status === 'Submitted' || week.status === 'Draft';
 
   const handleEditDay = (d: { id: string; label: string; hours: number }) => {
     navigation.navigate('DayTimesheetEntry', {
@@ -93,7 +106,7 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
   const handleApprove = async () => {
     try {
       await setWeekStatus(week.id, 'Approved');
-      await loadWeeks();
+      await refresh();
       Alert.alert('Approved', 'Timesheet approved successfully.');
       navigation.navigate('ManagerHome');
     } catch (e: any) {
@@ -108,7 +121,7 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
     }
     try {
       await setWeekStatus(week.id, 'Rejected', comment.trim());
-      await loadWeeks();
+      await refresh();
       Alert.alert('Rejected', 'Timesheet rejected successfully.');
       navigation.navigate('ManagerHome');
     } catch (e: any) {
@@ -132,11 +145,13 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
     await exportCsvAsFile(csv, `timesheet_${week.employeeName || 'export'}`);
   };
 
-  const statusColor = statusColors[week.status] || colors.textSecondary;
-
   return (
     <AppLayout>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
+      >
         <View style={styles.headerCard}>
           <Text style={styles.employeeName}>{week.employeeName || 'Unknown'}</Text>
           <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
@@ -156,66 +171,57 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
           <Text style={styles.totalValue}>{totalHours.toFixed(2)} h</Text>
         </View>
 
-        {week.rejectionComment && (
+        {week.rejectionComment ? (
           <View style={styles.rejectCard}>
             <Text style={styles.rejectLabel}>Rejection reason</Text>
             <Text style={styles.rejectText}>{week.rejectionComment}</Text>
           </View>
-        )}
+        ) : null}
 
         <Text style={styles.sectionTitle}>Daily Entries</Text>
         <View style={styles.daysCard}>
           {week.days.map((d) => (
-            <TouchableOpacity
-              key={d.id}
-              style={styles.dayRow}
-              onPress={() => handleEditDay(d)}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity key={d.id} style={styles.dayRow} onPress={() => handleEditDay(d)} activeOpacity={0.85}>
               <View style={styles.dayMain}>
                 <Text style={styles.dayLabel}>{d.label}</Text>
                 <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
               </View>
-              {(d.jobNo || d.location || d.shiftType || d.startTime || d.finishTime) && (
-                <View style={styles.dayMeta}>
-                  {d.jobNo && <Text style={styles.dayMetaText}>Job: {d.jobNo}</Text>}
-                  {d.location && <Text style={styles.dayMetaText}>Location: {d.location}</Text>}
-                  {d.shiftType && <Text style={styles.dayMetaText}>Shift: {d.shiftType}</Text>}
-                  {(d.startTime || d.finishTime) && (
-                    <Text style={styles.dayMetaText}>
-                      {d.startTime || '–'} – {d.finishTime || '–'}
-                    </Text>
-                  )}
-                  {d.description ? (
-                    <Text style={styles.dayMetaText} numberOfLines={2}>{d.description}</Text>
-                  ) : null}
-                </View>
-              )}
-              <View style={styles.editBtn}>
-                <Text style={styles.editBtnText}>✏️ Edit</Text>
+
+              <View style={styles.editPill}>
+                <Text style={styles.editPillText}>✏️ Edit</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        {week.status === 'Submitted' && (
+        {showApprovalActions ? (
           <>
             <Text style={styles.sectionTitle}>Comment (required for rejection)</Text>
-            <AppTextInput
-              placeholder="Required - explain why you are rejecting"
-              multiline
-              style={styles.commentInput}
-              value={comment}
-              onChangeText={setComment}
-            />
-            <View style={styles.actions}>
-              <AppButton label="✓ Approve" onPress={handleApprove} />
-              <AppButton label="✗ Reject" variant="secondary" onPress={handleReject} />
+
+            {/* ✅ FIX: wrapper view */}
+            <View style={styles.commentBox}>
+              <AppTextInput
+                placeholder="Required - explain why you are rejecting"
+                multiline
+                value={comment}
+                onChangeText={setComment}
+              />
+            </View>
+
+            <View style={[styles.actions, isNarrow && styles.actionsStack]}>
+              <View style={[styles.actionCol, isNarrow && styles.actionFull]}>
+                <AppButton label="✓ Approve" onPress={handleApprove} />
+              </View>
+              <View style={[styles.actionCol, isNarrow && styles.actionFull]}>
+                <AppButton label="✗ Reject" variant="secondary" onPress={handleReject} />
+              </View>
             </View>
           </>
-        )}
+        ) : null}
 
-        <AppButton label="Export CSV" variant="secondary" onPress={handleExport} />
+        <View style={{ marginTop: spacing.md }}>
+          <AppButton label="Export CSV" variant="secondary" onPress={handleExport} />
+        </View>
       </ScrollView>
     </AppLayout>
   );
@@ -225,41 +231,46 @@ const styles = StyleSheet.create({
   container: { paddingBottom: spacing.xl },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { ...typography.screenTitle, marginBottom: spacing.md },
+
   headerCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   employeeName: { ...typography.sectionTitle, fontSize: 18 },
-  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 8 },
-  statusText: { fontWeight: '600', fontSize: 14 },
+
+  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 10 },
+  statusText: { fontWeight: '700', fontSize: 14 },
+
   metaCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  metaLabel: { ...typography.body, marginBottom: spacing.xs },
+  metaLabel: { ...typography.body, marginBottom: spacing.xs, color: colors.textSecondary },
   metaValue: { ...typography.sectionTitle },
+
   totalCard: {
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
   totalLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
-  totalValue: { color: '#fff', fontSize: 24, fontWeight: '700', marginTop: spacing.xs },
+  totalValue: { color: '#fff', fontSize: 24, fontWeight: '800', marginTop: spacing.xs },
+
   rejectCard: {
     backgroundColor: '#fef2f2',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
@@ -267,10 +278,12 @@ const styles = StyleSheet.create({
   },
   rejectLabel: { ...typography.sectionTitle, marginBottom: spacing.xs, color: '#DC2626' },
   rejectText: { ...typography.body, color: colors.textPrimary },
+
   sectionTitle: { ...typography.sectionTitle, marginBottom: spacing.sm },
+
   daysCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     marginBottom: spacing.lg,
     borderWidth: 1,
@@ -288,25 +301,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  dayLabel: { ...typography.body, color: colors.textPrimary, fontWeight: '500' },
-  dayHours: { fontWeight: '600', color: colors.primary },
-  dayMeta: { marginTop: spacing.xs, marginBottom: spacing.xs },
-  dayMetaText: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  editBtn: {
+  dayLabel: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
+  dayHours: { fontWeight: '800', color: colors.primary },
+
+  editPill: {
     alignSelf: 'flex-start',
     marginTop: spacing.sm,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  editBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+  editPillText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+
+  // ✅ NEW wrapper for AppTextInput
+  commentBox: {
+    minHeight: 90,
+    marginBottom: spacing.md,
   },
-  commentInput: { minHeight: 80, textAlignVertical: 'top', marginBottom: spacing.md },
-  actions: { gap: spacing.md, marginBottom: spacing.lg },
+
+  actions: { flexDirection: 'row', marginBottom: spacing.lg },
+  actionsStack: { flexDirection: 'column' },
+  actionCol: { flex: 1, marginRight: spacing.md },
+  actionFull: { marginRight: 0, marginBottom: spacing.md },
 });
 
 export default ManagerTimesheetDetailScreen;

@@ -54,16 +54,16 @@ const EmployeeHomeScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.buttonRow}>
         <AppButton
-          label="+ New timesheet"
+          label="New Timesheet"
           onPress={() => navigation.navigate('DailyTimesheet')}
         />
         <AppButton
-          label="My timesheets"
+          label="My Timesheets"
           variant="secondary"
           onPress={() => navigation.navigate('MyTimesheets')}
         />
         <AppButton
-          label="View drafts"
+          label="View Drafts"
           variant="secondary"
           onPress={() => navigation.navigate('DraftTimesheets')}
         />

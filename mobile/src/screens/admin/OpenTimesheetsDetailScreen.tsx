@@ -63,7 +63,7 @@ const OpenTimesheetsDetailScreen: React.FC<Props> = ({ navigation }) => {
           </View>
           <Text style={styles.week}>Week: {item.label} – {item.weekStart}</Text>
           <Text style={styles.hours}>Total: {totalHours.toFixed(1)} h</Text>
-          <Text style={styles.tapHint}>Tap to view & edit</Text>
+          <Text style={styles.tapHint}>Tap to view & Edit</Text>
         </TouchableOpacity>
       );
     },
@@ -98,7 +98,7 @@ const OpenTimesheetsDetailScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <AppLayout>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Timesheets overview</Text>
+        <Text style={styles.title}>Timesheets Overview</Text>
         <Text style={styles.subtitle}>
           Submitted = pending manager approval | Approved = manager approved
         </Text>
@@ -115,19 +115,19 @@ const OpenTimesheetsDetailScreen: React.FC<Props> = ({ navigation }) => {
               title="Submitted (pending approval)"
               count={submitted.length}
               data={submitted}
-              emptyText="No timesheets pending approval"
+              emptyText="No Timesheets pending approval"
             />
             <Section
               title="Approved"
               count={approved.length}
               data={approved}
-              emptyText="No approved timesheets"
+              emptyText="No Approved Timesheets"
             />
             <Section
               title="Draft"
               count={draft.length}
               data={draft}
-              emptyText="No draft timesheets"
+              emptyText="No Draft Timesheets"
             />
           </>
         )}

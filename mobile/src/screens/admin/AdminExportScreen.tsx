@@ -123,7 +123,7 @@ const AdminExportScreen: React.FC<Props> = () => {
   return (
     <AppLayout>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Export timesheet to CSV</Text>
+        <Text style={styles.title}>Export Timesheet to CSV</Text>
         <Text style={styles.subtitle}>
           Select employee and weeks, then export
         </Text>
@@ -138,7 +138,7 @@ const AdminExportScreen: React.FC<Props> = () => {
         />
 
         {employeeOptions.length === 0 && (
-          <Text style={styles.emptyHint}>No timesheet data. Employees need to submit timesheets first.</Text>
+          <Text style={styles.emptyHint}>No Timesheet data. Employees need to submit Timesheets first.</Text>
         )}
 
         {selectedEmployee && (
@@ -158,7 +158,7 @@ const AdminExportScreen: React.FC<Props> = () => {
               </View>
 
               {weeksForEmployee.length === 0 ? (
-                <Text style={styles.emptyText}>No timesheets for this employee</Text>
+                <Text style={styles.emptyText}>No Timesheets for this employee</Text>
               ) : (
                 weeksForEmployee.map((w) => {
                   const totalHours = w.days.reduce((s, d) => s + d.hours, 0);

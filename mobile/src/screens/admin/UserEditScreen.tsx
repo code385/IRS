@@ -1,7 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Alert, Share, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  Share,
+  Platform,
+  ScrollView,
+  KeyboardAvoidingView,
+  useWindowDimensions,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CommonActions } from '@react-navigation/native';
+
 import AppLayout from '../../components/AppLayout';
 import AppTextInput from '../../components/AppTextInput';
 import AppButton from '../../components/AppButton';
@@ -25,6 +36,9 @@ function generatePassword(length: number = 10): string {
 }
 
 const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 720; // responsive breakpoint (web + tablets)
+
   const { mode, userId } = route.params ?? { mode: 'create' };
   const currentUser = useAuthStore((s) => s.user);
 
@@ -59,6 +73,11 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
   const [role, setRole] = useState<UserRole>('Employee');
   const [status, setStatus] = useState<UserStatus>('Active');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // ensure list loaded when coming direct to edit
+    if (!users?.length) loadUsers();
+  }, [users?.length, loadUsers]);
 
   useEffect(() => {
     if (mode === 'create') {
@@ -147,32 +166,20 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
           ? `IRS Timesheet – Login credentials\n\nName: ${creds.name}\nEmail: ${creds.email}\nPassword: ${creds.password}\nRole: ${creds.role}\n\nUse these to sign in to the app.`
           : `IRS Timesheet – Login credentials\n\nEmail: ${email.trim().toLowerCase()}\nPassword: ${password}\nRole: ${role}\n\nUse these to sign in to the app.`;
 
-        // ✅ WEB: copy/popup FIRST, then navigate
         if (Platform.OS === 'web') {
           await shareCredentials(msg);
-
-          if (!result.adminReloggedIn) {
-            doResetToLogin();
-          } else {
-            navigation.goBack();
-          }
+          if (!result.adminReloggedIn) doResetToLogin();
+          else navigation.goBack();
           return;
         }
 
-        // ✅ MOBILE: keep old flow with Share button
-        if (!result.adminReloggedIn) {
-          doResetToLogin();
-        } else {
-          navigation.goBack();
-        }
+        if (!result.adminReloggedIn) doResetToLogin();
+        else navigation.goBack();
 
         Alert.alert(
           'User created successfully! ✅',
           result.message || `New user "${name}" has been created. Tap Share to send credentials.`,
-          [
-            { text: 'OK' },
-            { text: 'Share credentials', onPress: () => shareCredentials(msg) },
-          ]
+          [{ text: 'OK' }, { text: 'Share credentials', onPress: () => shareCredentials(msg) }]
         );
       } catch (err: any) {
         const m = err?.message || err?.code || 'Failed to create user.';
@@ -188,18 +195,23 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
 
     // EDIT
     if (existing) {
+      setIsSubmitting(true);
       try {
         await updateUser(existing.id, { name, email, role, status });
-        showMsg('User updated', 'User details have been saved.');
+        await loadUsers();
+        showMsg('User updated ✅', 'User details have been saved.');
         navigation.goBack();
       } catch (err: any) {
         showMsg('Error', err?.message || 'Failed to update user.');
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
 
   const handleBlockToggle = async () => {
     if (!existing) return;
+
     const newStatus: UserStatus = existing.status === 'Blocked' ? 'Active' : 'Blocked';
     const title = newStatus === 'Blocked' ? 'Block user?' : 'Unblock user?';
     const message =
@@ -229,7 +241,7 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
           try {
             await updateUser(existing.id, { status: newStatus });
             await loadUsers();
-            Alert.alert(newStatus === 'Blocked' ? 'User blocked' : 'User unblocked', '');
+            Alert.alert(newStatus === 'Blocked' ? 'User blocked ✅' : 'User unblocked ✅', '');
             navigation.goBack();
           } catch (e: any) {
             Alert.alert('Error', e?.message || 'Failed to update user status.');
@@ -266,7 +278,7 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
           try {
             await deleteUser(existing.id);
             await loadUsers();
-            Alert.alert('User deleted', `"${existing.name}" has been deleted successfully.`);
+            Alert.alert('User deleted ✅', `"${existing.name}" has been deleted successfully.`);
             navigation.goBack();
           } catch (e: any) {
             Alert.alert('Error', e?.message || 'Failed to delete user.');
@@ -278,138 +290,169 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <AppLayout>
-      <Text style={styles.title}>{mode === 'create' ? 'Add new user' : 'Edit user'}</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        {/* ✅ ScrollView fixes missing buttons on web/small screens */}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
+        >
+          <Text style={styles.title}>{mode === 'create' ? 'Add new user' : 'Edit user'}</Text>
 
-      <View style={styles.form}>
-        <AppTextInput
-          label="Name"
-          placeholder="Full name"
-          value={name}
-          onChangeText={setName}
-        />
+          <View style={styles.form}>
+            <AppTextInput label="Name" placeholder="Full name" value={name} onChangeText={setName} />
 
-        <AppTextInput
-          label="Email"
-          placeholder="user@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
+            <AppTextInput
+              label="Email"
+              placeholder="user@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
 
-        {(mode === 'create' || (mode === 'edit' && isSuperAdmin)) && (
-          <View style={styles.passwordRow}>
-            <View style={styles.passwordInput}>
-              <AppTextInput
-                label={mode === 'create' ? 'Password' : 'New password (optional)'}
-                placeholder={
+            {(mode === 'create' || (mode === 'edit' && isSuperAdmin)) && (
+              <View style={styles.passwordRow}>
+                <View style={styles.passwordInput}>
+                  <AppTextInput
+                    label={mode === 'create' ? 'Password' : 'New password (optional)'}
+                    placeholder={mode === 'create' ? 'Min 6 characters' : 'Leave empty to keep current password'}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={{ marginTop: spacing.sm }}>
+                  <AppButton
+                    label="Generate password"
+                    variant="secondary"
+                    onPress={handleGeneratePassword}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* ✅ Responsive: narrow screens => column, wide => row */}
+            <View style={[styles.row, isNarrow && styles.rowStack]}>
+              <View style={[styles.half, isNarrow && styles.full]}>
+                <Text style={styles.label}>Role</Text>
+                <View style={styles.dropdown}>
+                  {(currentUser?.role === 'Super Admin' ? roles : roles.filter((r) => r !== 'Super Admin')).map(
+                    (r) => (
+                      <Text
+                        key={r}
+                        style={[styles.option, r === role && styles.optionSelected]}
+                        onPress={() => setRole(r)}
+                      >
+                        {r}
+                      </Text>
+                    )
+                  )}
+                </View>
+              </View>
+
+              <View style={[styles.half, isNarrow && styles.full, isNarrow && { marginTop: spacing.md }]}>
+                <Text style={styles.label}>Status</Text>
+                <View style={styles.dropdown}>
+                  {(isSuperAdmin ? statuses : statuses.filter((s) => s !== 'Blocked')).map((s) => (
+                    <Text
+                      key={s}
+                      style={[styles.option, s === status && styles.optionSelected]}
+                      onPress={() => setStatus(s)}
+                    >
+                      {s}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Actions */}
+            {mode === 'edit' && existing && canBlock && (
+              <View style={{ marginTop: spacing.md }}>
+                <AppButton
+                  label={existing.status === 'Blocked' ? 'Unblock user' : 'Block user'}
+                  variant="secondary"
+                  onPress={handleBlockToggle}
+                  disabled={isSubmitting}
+                />
+              </View>
+            )}
+
+            {mode === 'edit' && existing && canDelete && (
+              <View style={{ marginTop: spacing.sm }}>
+                <AppButton
+                  label="Delete user"
+                  variant="secondary"
+                  onPress={handleDelete}
+                  disabled={isSubmitting}
+                />
+              </View>
+            )}
+
+            {/* ✅ This was not visible before due to missing scroll */}
+            <View style={{ marginTop: spacing.md }}>
+              <AppButton
+                label={
                   mode === 'create'
-                    ? 'Min 6 characters'
-                    : 'Leave empty to keep current password'
+                    ? isSubmitting
+                      ? 'Creating…'
+                      : 'Create user'
+                    : isSubmitting
+                      ? 'Saving…'
+                      : 'Save changes'
                 }
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
+                onPress={handleSave}
+                disabled={isSubmitting}
               />
             </View>
-            <AppButton
-              label="Generate password"
-              variant="secondary"
-              onPress={handleGeneratePassword}
-            />
           </View>
-        )}
-
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>Role</Text>
-            <View style={styles.dropdown}>
-              {(currentUser?.role === 'Super Admin'
-                ? roles
-                : roles.filter((r) => r !== 'Super Admin')
-              ).map((r) => (
-                <Text
-                  key={r}
-                  style={[styles.option, r === role && styles.optionSelected]}
-                  onPress={() => setRole(r)}
-                >
-                  {r}
-                </Text>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.half}>
-            <Text style={styles.label}>Status</Text>
-            <View style={styles.dropdown}>
-              {(isSuperAdmin ? statuses : statuses.filter((s) => s !== 'Blocked')).map((s) => (
-                <Text
-                  key={s}
-                  style={[styles.option, s === status && styles.optionSelected]}
-                  onPress={() => setStatus(s)}
-                >
-                  {s}
-                </Text>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {mode === 'edit' && existing && canBlock && (
-          <AppButton
-            label={existing.status === 'Blocked' ? 'Unblock user' : 'Block user'}
-            variant="secondary"
-            onPress={handleBlockToggle}
-          />
-        )}
-
-        {mode === 'edit' && existing && canDelete && (
-          <AppButton
-            label="Delete user"
-            variant="secondary"
-            onPress={handleDelete}
-          />
-        )}
-
-        <AppButton
-          label={
-            mode === 'create'
-              ? isSubmitting
-                ? 'Creating…'
-                : 'Create user'
-              : 'Save changes'
-          }
-          onPress={handleSave}
-          disabled={isSubmitting}
-        />
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </AppLayout>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: spacing.xl, // ✅ ensures last button never hides
+  },
   title: {
     ...typography.screenTitle,
     marginBottom: spacing.md,
   },
   form: {
-    gap: spacing.md,
+    // ❌ gap removed for better cross-platform consistency
   },
+
   passwordRow: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   passwordInput: {
     width: '100%',
   },
+
   row: {
     flexDirection: 'row',
-    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  rowStack: {
+    flexDirection: 'column',
   },
   half: {
     flex: 1,
   },
+  full: {
+    width: '100%',
+    flex: 0,
+  },
+
   label: {
     ...typography.body,
     marginBottom: spacing.xs,
@@ -422,7 +465,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   option: {
-    paddingVertical: 4,
+    paddingVertical: 6,
     color: colors.textSecondary,
   },
   optionSelected: {

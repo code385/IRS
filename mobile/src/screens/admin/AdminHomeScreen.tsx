@@ -58,12 +58,12 @@ const AdminHomeScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.buttonRow}>
         <AppButton label="Manage Users" onPress={() => navigation.navigate('UserManagement')} />
         <AppButton
-          label="View timesheets"
+          label="View Timesheets"
           variant="secondary"
           onPress={() => navigation.navigate('Reports')}
         />
         <AppButton
-          label="Export timesheet (CSV)"
+          label="Export Timesheet (CSV)"
           variant="secondary"
           onPress={() => navigation.navigate('AdminExport')}
         />
@@ -79,14 +79,14 @@ const AdminHomeScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.statCard}
         />
         <StatCard
-          title="Open timesheets"
+          title="Open Timesheets"
           value={String(openCount)}
           tone="warning"
           onPress={() => navigation.navigate('OpenTimesheetsDetail')}
           style={styles.statCard}
         />
         <StatCard
-          title="Total hours"
+          title="Total Hours"
           value={totalHours.toFixed(0)}
           onPress={() => navigation.navigate('TotalHoursDetail')}
           style={styles.statCard}
