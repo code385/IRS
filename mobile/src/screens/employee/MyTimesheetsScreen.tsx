@@ -1,5 +1,12 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import AppLayout from '../../components/AppLayout';
 import AppButton from '../../components/AppButton';
 import { typography } from '../../theme/typography';
@@ -8,6 +15,31 @@ import { colors } from '../../theme/colors';
 import { useTimesheetStore } from '../../store/timesheetStore';
 import { useAuthStore } from '../../store/authStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+type Props = NativeStackScreenProps<any>;
+
+const formatFullWeekRange = (weekStartString: string) => {
+  const [dd, mm, yyyy] = weekStartString.split('/').map(Number);
+
+  const startDate = new Date(yyyy, mm - 1, dd);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+
+  const days = [
+    'Sunday','Monday','Tuesday','Wednesday',
+    'Thursday','Friday','Saturday'
+  ];
+
+  const formatDate = (date: Date) => {
+    const dayName = days[date.getDay()];
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${dayName} ${d}/${m}/${y}`;
+  };
+
+  return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+};
 
 function StatusBadge({ status }: { status: string }) {
   let backgroundColor = colors.background;
@@ -34,194 +66,86 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-type Props = NativeStackScreenProps<any>;
-
 const MyTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
   const user = useAuthStore((s) => s.user);
   const weeks = useTimesheetStore((s) => s.weeks);
   const isLoading = useTimesheetStore((s) => s.isLoading);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Draft' | 'Submitted' | 'Approved' | 'Rejected'>('All');
-  const [dateFilter, setDateFilter] = useState<
-    'All' | 'Last7Days' | 'Last30Days' | 'Last90Days' | 'Last180Days' | 'Last365Days'
-  >('Last30Days');
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const [isDateOpen, setIsDateOpen] = useState(false);
+
+  const [statusFilter, setStatusFilter] = useState<
+    'All' | 'Draft' | 'Submitted' | 'Approved' | 'Rejected'
+  >('All');
 
   useEffect(() => {
     if (user?.id) loadWeeks(user.id);
   }, [user?.id, loadWeeks]);
 
   const filtered = useMemo(() => {
-    let result = weeks.slice();
-    if (statusFilter !== 'All') {
-      result = result.filter((w) => w.status === statusFilter);
-    }
-    if (dateFilter !== 'All') {
-      const now = new Date();
-      const daysBack =
-        dateFilter === 'Last7Days'
-          ? 7
-          : dateFilter === 'Last30Days'
-          ? 30
-          : dateFilter === 'Last90Days'
-          ? 90
-          : dateFilter === 'Last180Days'
-          ? 180
-          : 365;
-
-      const cutoff = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - daysBack,
-      );
-
-      result = result.filter((w) => {
-        // weekStart is in DD/MM/YYYY
-        const [dd, mm, yyyy] = (w.weekStart || '').split('/');
-        if (!dd || !mm || !yyyy) return true;
-        const weekDate = new Date(parseInt(yyyy, 10), parseInt(mm, 10) - 1, parseInt(dd, 10));
-        return weekDate >= cutoff;
-      });
-    }
-    return result;
-  }, [weeks, statusFilter, dateFilter]);
+    if (statusFilter === 'All') return weeks;
+    return weeks.filter((w) => w.status === statusFilter);
+  }, [weeks, statusFilter]);
 
   const mapped = filtered.map((w) => {
     const totalHours = w.days.reduce((sum, d) => sum + d.hours, 0);
+
     return {
       id: w.id,
-      weekLabel: w.label,
-      weekStart: w.weekStart,
-      weekEnd: w.label,
+      weekRange: formatFullWeekRange(w.weekStart),
       totalHours,
       status: w.status,
-      submitted: w.status === 'Submitted' ? w.label : '-',
+      submitted: w.status === 'Submitted' ? 'Yes' : '-',
       approvedBy: w.status === 'Approved' ? 'Manager' : '-',
     };
   });
 
   return (
     <AppLayout>
-      <Text style={styles.title}>My timesheets</Text>
+      <Text style={styles.title}>My Timesheets</Text>
+
       {isLoading && (
         <View style={styles.loading}>
           <ActivityIndicator size="small" color={colors.primary} />
         </View>
       )}
-      <View style={styles.filtersRow}>
-        <View style={styles.filter}>
-          <Text style={styles.filterLabel}>Filter by status</Text>
-          <View style={styles.filterBox}>
-            <TouchableOpacity
-              style={styles.dropdownHeader}
-              onPress={() => setIsStatusOpen((prev) => !prev)}
-            >
-              <Text style={styles.filterValue}>{statusFilter}</Text>
-              <Text style={styles.dropdownArrow}>{isStatusOpen ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            {isStatusOpen && (
-              <View style={styles.dropdownList}>
-                {['All', 'Draft', 'Submitted', 'Approved', 'Rejected'].map((status) => (
-                  <TouchableOpacity
-                    key={status}
-                    onPress={() => {
-                      setStatusFilter(status as typeof statusFilter);
-                      setIsStatusOpen(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownItem}>{status}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-        <View style={styles.filter}>
-          <Text style={styles.filterLabel}>Date range</Text>
-          <View style={styles.filterBox}>
-            <TouchableOpacity
-              style={styles.dropdownHeader}
-              onPress={() => setIsDateOpen((prev) => !prev)}
-            >
-              <Text style={styles.filterValue}>
-                {dateFilter === 'All'
-                  ? 'All time'
-                  : dateFilter === 'Last7Days'
-                  ? 'Last 7 days'
-                  : dateFilter === 'Last30Days'
-                  ? 'Last 30 days'
-                  : dateFilter === 'Last90Days'
-                  ? 'Last 3 months'
-                  : dateFilter === 'Last180Days'
-                  ? 'Last 6 months'
-                  : 'Last 12 months'}
-              </Text>
-              <Text style={styles.dropdownArrow}>{isDateOpen ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            {isDateOpen && (
-              <View style={styles.dropdownList}>
-                {[
-                  { value: 'All', label: 'All time' },
-                  { value: 'Last7Days', label: 'Last 7 days' },
-                  { value: 'Last30Days', label: 'Last 30 days' },
-                  { value: 'Last90Days', label: 'Last 3 months' },
-                  { value: 'Last180Days', label: 'Last 6 months' },
-                  { value: 'Last365Days', label: 'Last 12 months' },
-                ].map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    onPress={() => {
-                      setDateFilter(opt.value as typeof dateFilter);
-                      setIsDateOpen(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownItem}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
 
       <FlatList
         data={mapped}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: spacing.lg }}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        initialNumToRender={10}
-        windowSize={10}
         renderItem={({ item }) => (
           <View style={styles.card}>
+
             <View style={styles.cardRow}>
-              <Text style={styles.cardWeek}>{item.weekLabel}</Text>
+              <Text style={styles.weekRange}>{item.weekRange}</Text>
               <StatusBadge status={item.status} />
             </View>
-            <View style={styles.cardRow}>
-              <Text style={styles.cardLabel}>Week range</Text>
-              <Text style={styles.cardValue}>
-                {item.weekEnd} – {item.weekStart}
-              </Text>
-            </View>
+
             <View style={styles.cardRow}>
               <Text style={styles.cardLabel}>Total hours</Text>
-              <Text style={styles.cardValue}>{item.totalHours.toFixed(1)}</Text>
+              <Text style={styles.cardValue}>
+                {item.totalHours.toFixed(2)}
+              </Text>
             </View>
+
             <View style={styles.cardRow}>
               <Text style={styles.cardLabel}>Submitted</Text>
               <Text style={styles.cardValue}>{item.submitted}</Text>
             </View>
+
             <View style={styles.cardRow}>
               <Text style={styles.cardLabel}>Approved by</Text>
               <Text style={styles.cardValue}>{item.approvedBy}</Text>
             </View>
+
             <View style={styles.viewButton}>
               <AppButton
                 label="View"
-                onPress={() => navigation.navigate('WeekReview', { weekId: item.id, canEdit: false })}
+                onPress={() =>
+                  navigation.navigate('WeekReview', {
+                    weekId: item.id,
+                    canEdit: false,
+                  })
+                }
                 variant="secondary"
               />
             </View>
@@ -237,47 +161,6 @@ const styles = StyleSheet.create({
     ...typography.screenTitle,
     marginBottom: spacing.md,
   },
-  filtersRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  filter: {
-    flex: 1,
-  },
-  filterLabel: {
-    ...typography.body,
-    marginBottom: spacing.xs,
-  },
-  filterBox: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-  },
-  filterValue: {
-    color: colors.textPrimary,
-  },
-  dropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dropdownArrow: {
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
-  },
-  dropdownList: {
-    marginTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  dropdownItem: {
-    paddingVertical: spacing.xs,
-    color: colors.textSecondary,
-  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -292,9 +175,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  cardWeek: {
+  weekRange: {
     fontWeight: '600',
     color: colors.textPrimary,
+    flex: 1,
+    paddingRight: spacing.sm,
   },
   cardLabel: {
     ...typography.body,
@@ -324,4 +209,3 @@ const styles = StyleSheet.create({
 });
 
 export default MyTimesheetsScreen;
-

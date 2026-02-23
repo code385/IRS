@@ -65,12 +65,12 @@ function EmployeeStackNavigator() {
       <EmployeeStack.Screen
         name="DailyTimesheet"
         component={DailyTimesheetScreen}
-        options={{ title: 'Daily Timesheet' }}
+        options={{ title: 'Home' }}
       />
       <EmployeeStack.Screen
         name="DayTimesheetEntry"
         component={DayTimesheetEntryScreen}
-        options={{ title: 'Day Entry' }}
+        options={{ title: 'Main Page' }}
       />
       <EmployeeStack.Screen
         name="MyTimesheets"

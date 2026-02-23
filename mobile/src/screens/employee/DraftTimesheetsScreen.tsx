@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import AppLayout from '../../components/AppLayout';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTimesheetStore } from '../../store/timesheetStore';
@@ -10,11 +16,35 @@ import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<any>;
 
+const formatFullWeekRange = (weekStartString: string) => {
+  const [dd, mm, yyyy] = weekStartString.split('/').map(Number);
+
+  const startDate = new Date(yyyy, mm - 1, dd);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+
+  const days = [
+    'Sunday','Monday','Tuesday','Wednesday',
+    'Thursday','Friday','Saturday'
+  ];
+
+  const formatDate = (date: Date) => {
+    const dayName = days[date.getDay()];
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${dayName} ${d}/${m}/${y}`;
+  };
+
+  return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+};
+
 const DraftTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
   const weeks = useTimesheetStore((s) => s.weeks);
   const isLoading = useTimesheetStore((s) => s.isLoading);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
   const user = useAuthStore((s) => s.user);
+
   const [statusFilter, setStatusFilter] = useState<'Draft' | 'Submitted'>('Draft');
   const [isWeekListOpen, setIsWeekListOpen] = useState(false);
 
@@ -28,17 +58,19 @@ const DraftTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <AppLayout>
-      <Text style={styles.title}>Draft timesheets</Text>
+      <Text style={styles.title}>Draft Timesheets</Text>
 
       {isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : weeks.length === 0 ? (
-        <Text style={styles.empty}>No drafts yet. Use “+ New timesheet” to create one.</Text>
+        <Text style={styles.empty}>
+          No drafts yet. Use “+ New timesheet” to create one.
+        </Text>
       ) : (
         <>
-          {/* Status filter dropdown */}
+          {/* Status filter */}
           <Text style={styles.label}>Status</Text>
           <View style={styles.dropdownBox}>
             <TouchableOpacity
@@ -52,16 +84,23 @@ const DraftTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Week dropdown with arrow and list */}
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Select week</Text>
+          {/* Week dropdown */}
+          <Text style={[styles.label, { marginTop: spacing.md }]}>
+            Select week
+          </Text>
           <View style={styles.dropdownBox}>
             <TouchableOpacity
               style={styles.dropdownHeader}
               onPress={() => setIsWeekListOpen((prev) => !prev)}
             >
-              <Text style={styles.dropdownText}>Week select</Text>
-              <Text style={styles.dropdownArrow}>{isWeekListOpen ? '▲' : '▼'}</Text>
+              <Text style={styles.dropdownText}>
+                {isWeekListOpen ? 'Hide weeks' : 'Choose week'}
+              </Text>
+              <Text style={styles.dropdownArrow}>
+                {isWeekListOpen ? '▲' : '▼'}
+              </Text>
             </TouchableOpacity>
+
             {isWeekListOpen && (
               <View style={styles.weekList}>
                 {filteredWeeks.map((w) => (
@@ -69,12 +108,18 @@ const DraftTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
                     key={w.id}
                     style={styles.weekItem}
                     onPress={() => {
-                      navigation.navigate('WeekReview', { weekId: w.id, canEdit: false });
+                      navigation.navigate('WeekReview', {
+                        weekId: w.id,
+                        canEdit: false,
+                      });
                       setIsWeekListOpen(false);
                     }}
                   >
                     <Text style={styles.weekItemText}>
-                      Week: {w.label} – {w.weekStart}  |  Status: {w.status}
+                      {formatFullWeekRange(w.weekStart)}
+                    </Text>
+                    <Text style={styles.statusText}>
+                      Status: {w.status}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -114,57 +159,32 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     color: colors.textPrimary,
+    fontWeight: '600',
   },
   dropdownArrow: {
     color: colors.textSecondary,
-    marginLeft: spacing.sm,
   },
   weekList: {
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   weekItem: {
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   weekItemText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  weekChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  weekChipSelected: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  weekChipText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  weekChipTextSelected: {
-    color: '#FFFFFF',
-  },
-  dayRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  dayLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  dayHours: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  statusText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  loading: {
+    marginTop: spacing.lg,
   },
 });
 
 export default DraftTimesheetsScreen;
-
