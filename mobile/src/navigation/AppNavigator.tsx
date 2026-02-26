@@ -2,9 +2,11 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
+
 import EmployeeHomeScreen from '../screens/employee/EmployeeHomeScreen';
 import DailyTimesheetScreen from '../screens/employee/DailyTimesheetScreen';
 import DayTimesheetEntryScreen from '../screens/employee/DayTimesheetEntryScreen';
@@ -13,11 +15,13 @@ import SubmittedWeekDetailsScreen from '../screens/employee/SubmittedWeekDetails
 import MyTimesheetsScreen from '../screens/employee/MyTimesheetsScreen';
 import DraftTimesheetsScreen from '../screens/employee/DraftTimesheetsScreen';
 import WeekReviewScreen from '../screens/employee/WeekReviewScreen';
+
 import ManagerHomeScreen from '../screens/manager/ManagerHomeScreen';
 import PendingTimesheetsScreen from '../screens/manager/PendingTimesheetsScreen';
 import TimesheetReviewScreen from '../screens/manager/TimesheetReviewScreen';
 import ManagerTimesheetListScreen from '../screens/manager/ManagerTimesheetListScreen';
 import ManagerTimesheetDetailScreen from '../screens/manager/ManagerTimesheetDetailScreen';
+
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
 import UserManagementScreen from '../screens/admin/UserManagementScreen';
 import UserStatsDetailScreen from '../screens/admin/UserStatsDetailScreen';
@@ -28,6 +32,7 @@ import AdminTimesheetDetailScreen from '../screens/admin/AdminTimesheetDetailScr
 import AdminRejectedDetailScreen from '../screens/admin/AdminRejectedDetailScreen';
 import AdminExportScreen from '../screens/admin/AdminExportScreen';
 import UserEditScreen from '../screens/admin/UserEditScreen';
+
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme/colors';
@@ -217,11 +222,19 @@ export default function AppNavigator() {
   const isReauthenticating = useAuthStore((s) => s.isReauthenticating);
   const navigationRef = useRef<any>(null);
 
-  // ✅ Force browser tab title to stay constant on web
+  // ✅ Hard-lock browser tab title on WEB (works on Vercel too)
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      document.title = WEB_TITLE;
-    }
+    if (Platform.OS !== 'web') return;
+
+    const setTitle = () => {
+      if (document.title !== WEB_TITLE) {
+        document.title = WEB_TITLE;
+      }
+    };
+
+    setTitle(); // initial
+    const intervalId = window.setInterval(setTitle, 300); // keep constant even if overwritten
+    return () => window.clearInterval(intervalId);
   }, []);
 
   // Redirect to login when user is null AND not during admin re-login (user creation)
@@ -252,10 +265,11 @@ export default function AppNavigator() {
   return (
     <NavigationContainer
       ref={navigationRef}
+      onReady={() => {
+        if (Platform.OS === 'web') document.title = WEB_TITLE;
+      }}
       onStateChange={() => {
-        if (Platform.OS === 'web') {
-          document.title = WEB_TITLE;
-        }
+        if (Platform.OS === 'web') document.title = WEB_TITLE;
       }}
     >
       <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
