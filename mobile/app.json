@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "IRSTimesheet",
+    "name": "IRS Timesheet",
     "slug": "irs-timesheet",
     "package": "com.hashturn.irstimesheet",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/irs-icon.png",
+    "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/irs-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,12 +23,16 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/irs-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.hashturn.irstimesheet"
     },
-    "web": {},
+    "web": {
+      "name": "IRS Timesheet",          
+      "shortName": "IRS",            
+      "favicon": "./assets/icon.png"
+    },
     "extra": {
       "eas": {
         "projectId": "bc8048dd-a97e-4da0-b509-2c449eb75c19"

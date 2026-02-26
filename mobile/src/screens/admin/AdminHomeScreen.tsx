@@ -7,6 +7,7 @@ import { useTimesheetStore } from '../../store/timesheetStore';
 import AppLayout from '../../components/AppLayout';
 import AppButton from '../../components/AppButton';
 import StatCard from '../../components/StatCard';
+import NotificationBell from '../../components/NotificationBell';
 import ProfileIcon from '../../components/ProfileIcon';
 import { spacing } from '../../theme/spacing';
 import { colors } from '../../theme/colors';
@@ -40,30 +41,37 @@ const AdminHomeScreen: React.FC<Props> = ({ navigation }) => {
     <AppLayout>
       <View style={styles.headerBar}>
         <View>
-          <Text style={styles.appTitle}>
-            {isSuperAdmin ? 'Super Admin' : 'Admin'} portal
-          </Text>
+          <Text style={styles.appTitle}>{isSuperAdmin ? 'Super Admin' : 'Admin'} portal</Text>
           <Text style={styles.appSubtitle}>Manage users and timesheets</Text>
         </View>
 
-        {/* ✅ ONLY ProfileIcon now */}
-        <View style={styles.headerRight} pointerEvents="auto">
-          <ProfileIcon
-            userName={user?.name ?? (isSuperAdmin ? 'Super Admin' : 'Admin')}
-            onLogout={logout}
-          />
+        {/* ✅ FIX: make right side a row + control pointer events/zIndex for web */}
+        <View style={styles.headerRight} pointerEvents="box-none">
+          <View style={styles.bellWrap} pointerEvents="auto">
+            <NotificationBell
+              count={rejectedCount + openCount}
+              onPress={() => navigation.navigate('AdminRejectedDetail')}
+            />
+          </View>
+
+          <View style={styles.profileWrap} pointerEvents="auto">
+            <ProfileIcon
+              userName={user?.name ?? (isSuperAdmin ? 'Super Admin' : 'Admin')}
+              onLogout={logout}
+            />
+          </View>
         </View>
       </View>
 
       <View style={styles.buttonRow}>
         <AppButton label="Manage Users" onPress={() => navigation.navigate('UserManagement')} />
         <AppButton
-          label="View Timesheets"
+          label="View timesheets"
           variant="secondary"
           onPress={() => navigation.navigate('Reports')}
         />
         <AppButton
-          label="Export Timesheet (CSV)"
+          label="Export timesheet (CSV)"
           variant="secondary"
           onPress={() => navigation.navigate('AdminExport')}
         />
@@ -79,14 +87,14 @@ const AdminHomeScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.statCard}
         />
         <StatCard
-          title="Open Timesheets"
+          title="Open timesheets"
           value={String(openCount)}
           tone="warning"
           onPress={() => navigation.navigate('OpenTimesheetsDetail')}
           style={styles.statCard}
         />
         <StatCard
-          title="Total Hours"
+          title="Total hours"
           value={totalHours.toFixed(0)}
           onPress={() => navigation.navigate('TotalHoursDetail')}
           style={styles.statCard}
@@ -112,7 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
-    overflow: 'visible',
+    overflow: 'visible', // ✅ web: allow touches/overlays correctly
   },
   appTitle: {
     color: '#FFFFFF',
@@ -123,9 +131,22 @@ const styles = StyleSheet.create({
     color: '#FFEBEE',
     marginTop: spacing.xs,
   },
+
+  // ✅ FIX: row layout so bell doesn't overlap profile
   headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     overflow: 'visible',
   },
+  bellWrap: {
+    zIndex: 1,
+  },
+  profileWrap: {
+    zIndex: 999999,
+    elevation: 999999,
+  },
+
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

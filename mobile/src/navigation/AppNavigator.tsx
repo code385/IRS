@@ -28,15 +28,19 @@ import AdminTimesheetDetailScreen from '../screens/admin/AdminTimesheetDetailScr
 import AdminRejectedDetailScreen from '../screens/admin/AdminRejectedDetailScreen';
 import AdminExportScreen from '../screens/admin/AdminExportScreen';
 import UserEditScreen from '../screens/admin/UserEditScreen';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme/colors';
 
 export type RootStackParamList = {
   Splash: undefined;
-  Auth: { mode: 'login' | 'signup'; role?: 'Super Admin' | 'Admin' | 'Manager' | 'Employee' } | undefined;
+  Auth:
+    | { mode: 'login' | 'signup'; role?: 'Super Admin' | 'Admin' | 'Manager' | 'Employee' }
+    | undefined;
   Main: undefined;
 };
+
+const WEB_TITLE = 'IRS Timesheet';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator();
@@ -62,31 +66,19 @@ function EmployeeStackNavigator() {
         component={EmployeeHomeScreen}
         options={{ title: 'Employee Dashboard' }}
       />
-      <EmployeeStack.Screen
-        name="DailyTimesheet"
-        component={DailyTimesheetScreen}
-        options={{ title: 'Home' }}
-      />
+      <EmployeeStack.Screen name="DailyTimesheet" component={DailyTimesheetScreen} options={{ title: 'Home' }} />
       <EmployeeStack.Screen
         name="DayTimesheetEntry"
         component={DayTimesheetEntryScreen}
         options={{ title: 'Main Page' }}
       />
-      <EmployeeStack.Screen
-        name="MyTimesheets"
-        component={MyTimesheetsScreen}
-        options={{ title: 'My Timesheets' }}
-      />
+      <EmployeeStack.Screen name="MyTimesheets" component={MyTimesheetsScreen} options={{ title: 'My Timesheets' }} />
       <EmployeeStack.Screen
         name="DraftTimesheets"
         component={DraftTimesheetsScreen}
         options={{ title: 'Draft Timesheets' }}
       />
-      <EmployeeStack.Screen
-        name="WeekReview"
-        component={WeekReviewScreen}
-        options={{ title: 'Review Week' }}
-      />
+      <EmployeeStack.Screen name="WeekReview" component={WeekReviewScreen} options={{ title: 'Review Week' }} />
       <EmployeeStack.Screen
         name="WeeklySummary"
         component={WeeklySummaryScreen}
@@ -134,11 +126,7 @@ function ManagerStackNavigator() {
         component={DayTimesheetEntryScreen}
         options={{ title: 'Edit day' }}
       />
-      <ManagerStack.Screen
-        name="WeekReview"
-        component={WeekReviewScreen}
-        options={{ title: 'Week Details' }}
-      />
+      <ManagerStack.Screen name="WeekReview" component={WeekReviewScreen} options={{ title: 'Week Details' }} />
     </ManagerStack.Navigator>
   );
 }
@@ -146,26 +134,10 @@ function ManagerStackNavigator() {
 function AdminStackNavigator() {
   return (
     <AdminStack.Navigator>
-      <AdminStack.Screen
-        name="AdminHome"
-        component={AdminHomeScreen}
-        options={{ title: 'Admin Dashboard' }}
-      />
-      <AdminStack.Screen
-        name="UserManagement"
-        component={UserManagementScreen}
-        options={{ title: 'Users' }}
-      />
-      <AdminStack.Screen
-        name="UserEdit"
-        component={UserEditScreen}
-        options={{ title: 'User' }}
-      />
-      <AdminStack.Screen
-        name="UserStatsDetail"
-        component={UserStatsDetailScreen}
-        options={{ title: 'User status' }}
-      />
+      <AdminStack.Screen name="AdminHome" component={AdminHomeScreen} options={{ title: 'Admin Dashboard' }} />
+      <AdminStack.Screen name="UserManagement" component={UserManagementScreen} options={{ title: 'Users' }} />
+      <AdminStack.Screen name="UserEdit" component={UserEditScreen} options={{ title: 'User' }} />
+      <AdminStack.Screen name="UserStatsDetail" component={UserStatsDetailScreen} options={{ title: 'User status' }} />
       <AdminStack.Screen
         name="OpenTimesheetsDetail"
         component={OpenTimesheetsDetailScreen}
@@ -176,11 +148,7 @@ function AdminStackNavigator() {
         component={TotalHoursDetailScreen}
         options={{ title: 'Total hours' }}
       />
-      <AdminStack.Screen
-        name="Reports"
-        component={ReportsScreen}
-        options={{ title: 'Timesheets' }}
-      />
+      <AdminStack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Timesheets' }} />
       <AdminStack.Screen
         name="AdminTimesheetDetail"
         component={AdminTimesheetDetailScreen}
@@ -191,11 +159,7 @@ function AdminStackNavigator() {
         component={AdminRejectedDetailScreen}
         options={{ title: 'Rejected timesheets' }}
       />
-      <AdminStack.Screen
-        name="AdminExport"
-        component={AdminExportScreen}
-        options={{ title: 'Export timesheet' }}
-      />
+      <AdminStack.Screen name="AdminExport" component={AdminExportScreen} options={{ title: 'Export timesheet' }} />
       <AdminStack.Screen
         name="DayTimesheetEntry"
         component={DayTimesheetEntryScreen}
@@ -216,7 +180,6 @@ function MainTabs() {
     );
   }
 
-  // Show only the dashboard for the logged-in user's role
   if (user.role === 'Super Admin' || user.role === 'Admin') {
     return (
       <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -224,6 +187,7 @@ function MainTabs() {
       </Tabs.Navigator>
     );
   }
+
   if (user.role === 'Manager') {
     return (
       <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -231,7 +195,7 @@ function MainTabs() {
       </Tabs.Navigator>
     );
   }
-  // Employee (default)
+
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="Employee" component={EmployeeStackNavigator} />
@@ -253,6 +217,13 @@ export default function AppNavigator() {
   const isReauthenticating = useAuthStore((s) => s.isReauthenticating);
   const navigationRef = useRef<any>(null);
 
+  // ✅ Force browser tab title to stay constant on web
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      document.title = WEB_TITLE;
+    }
+  }, []);
+
   // Redirect to login when user is null AND not during admin re-login (user creation)
   useLayoutEffect(() => {
     if (!user && !isReauthenticating && navigationRef.current?.isReady()) {
@@ -263,13 +234,15 @@ export default function AppNavigator() {
         navigationRef.current.dispatch(
           CommonActions.reset({
             index: 0,
-            routes: [{
-              name: 'Auth',
-              state: {
-                index: 0,
-                routes: [{ name: 'Login' }],
+            routes: [
+              {
+                name: 'Auth',
+                state: {
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                },
               },
-            }],
+            ],
           })
         );
       }
@@ -277,7 +250,14 @@ export default function AppNavigator() {
   }, [user, isReauthenticating]);
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={() => {
+        if (Platform.OS === 'web') {
+          document.title = WEB_TITLE;
+        }
+      }}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="Auth" component={AuthStackNavigator} />
@@ -286,4 +266,3 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
-
