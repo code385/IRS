@@ -8,6 +8,11 @@ node_modules/
 .expo/
 .expo-shared/
 
+# Native folders - managed by Expo CNG (prebuild)
+# EAS Build generates these automatically from app.json + plugins
+android/
+ios/
+
 # Build files
 dist/
 build/
