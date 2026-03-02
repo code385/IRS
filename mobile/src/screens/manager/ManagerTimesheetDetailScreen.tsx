@@ -201,6 +201,7 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
             {/* ✅ FIX: wrapper view */}
             <View style={styles.commentBox}>
               <AppTextInput
+                label="Rejection comment"
                 placeholder="Required - explain why you are rejecting"
                 multiline
                 value={comment}

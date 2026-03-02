@@ -10,7 +10,7 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { DayDraft, WeekTimesheet, TimesheetStatus } from '../store/timesheetStore';
 
 const COLLECTION_TIMESHEETS = 'timesheets';
@@ -22,6 +22,14 @@ export async function saveDayDraft(
   weekStart: string,
   day: DayDraft
 ): Promise<void> {
+  // DEBUG – ye console log check karo browser DevTools me
+  console.log('[saveDayDraft] auth.currentUser:', auth.currentUser?.uid ?? 'NULL – not logged in');
+  console.log('[saveDayDraft] params – userId:', userId, '| weekId:', weekId, '| weekStart:', weekStart);
+
+  if (!auth.currentUser) {
+    throw new Error('Session expired – please logout and login again, then save the draft.');
+  }
+
   const weekRef = doc(db, COLLECTION_TIMESHEETS, weekId);
   const weekDoc = await getDoc(weekRef);
   

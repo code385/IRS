@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, Platform, KeyboardAvoidingView, ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AppLayout from '../../components/AppLayout';
 import AppTextInput from '../../components/AppTextInput';
@@ -76,6 +76,14 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
 
+    if (!weekEndId || !weekEndLabel || !weekStart || !dayId || !dayLabel) {
+      Alert.alert(
+        'Error',
+        'Week details are missing. Please go back to the weekly timesheet and open this day again.'
+      );
+      return;
+    }
+
     if (totalHours <= 0) {
       Alert.alert('Invalid time', 'Finish time must be after start time.');
       return;
@@ -103,83 +111,89 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <AppLayout>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={Platform.OS === 'web'}
       >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Text style={styles.dayTitle}>{dayLabel}</Text>
-          <Text style={styles.dayHours}>{totalHours.toFixed(2)} hrs</Text>
-        </View>
-
-        {/* ✅ RESPONSIVE FORM WRAP */}
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <AppTextInput label="Job no." value={jobNo} onChangeText={setJobNo} />
+          {/* HEADER */}
+          <View style={styles.header}>
+            <Text style={styles.dayTitle}>{dayLabel}</Text>
+            <Text style={styles.dayHours}>{totalHours.toFixed(2)} hrs</Text>
           </View>
 
-          <View style={styles.field}>
-            <AppTextInput label="Location(s)" value={location} onChangeText={setLocation} />
-          </View>
+          {/* FORM */}
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <AppTextInput label="Job no." value={jobNo} onChangeText={setJobNo} />
+            </View>
 
-          <View style={styles.field}>
-            <AppDropdown
-              label="Start time"
-              value={startTime}
-              options={TIME_OPTIONS}
-              onSelect={setStartTime}
-              fullWidth
-            />
-          </View>
+            <View style={styles.field}>
+              <AppTextInput label="Location(s)" value={location} onChangeText={setLocation} />
+            </View>
 
-          <View style={styles.field}>
-            <AppDropdown
-              label="Finish time"
-              value={finishTime}
-              options={TIME_OPTIONS}
-              onSelect={setFinishTime}
-              fullWidth
-            />
-          </View>
+            <View style={styles.field}>
+              <AppDropdown
+                label="Start time"
+                value={startTime}
+                options={TIME_OPTIONS}
+                onSelect={setStartTime}
+                fullWidth
+              />
+            </View>
 
-          <View style={styles.field}>
-            <AppDropdown
-              label="Lunch taken?"
-              value={lunchTaken}
-              options={['Yes', 'No']}
-              onSelect={(v) => setLunchTaken(v as 'Yes' | 'No')}
-              fullWidth
-            />
-          </View>
+            <View style={styles.field}>
+              <AppDropdown
+                label="Finish time"
+                value={finishTime}
+                options={TIME_OPTIONS}
+                onSelect={setFinishTime}
+                fullWidth
+              />
+            </View>
 
-          {/* ✅ HOURS WORKED FIELD (AUTO UPDATED, NOT EDITABLE) */}
-          <View style={styles.field}>
-            <AppTextInput
-              label="Hours worked"
-              value={totalHours.toFixed(2)}
-              editable={false}
-              style={styles.readonly}
-            />
-          </View>
+            <View style={styles.field}>
+              <AppDropdown
+                label="Lunch taken?"
+                value={lunchTaken}
+                options={['Yes', 'No']}
+                onSelect={(v) => setLunchTaken(v as 'Yes' | 'No')}
+                fullWidth
+              />
+            </View>
 
-          <View style={styles.field}>
-            <AppTextInput
-              label="Work description / comments"
-              placeholder="Describe work performed..."
-              multiline
-              style={styles.multiline}
-              value={description}
-              onChangeText={setDescription}
-            />
-          </View>
+            <View style={styles.field}>
+              <AppTextInput
+                label="Hours worked"
+                value={totalHours.toFixed(2)}
+                editable={false}
+                style={styles.readonly}
+              />
+            </View>
 
-          <View style={styles.buttonWrap}>
-            <AppButton label="Save draft" onPress={handleSaveDraft} />
+            {/* Description box – extra bottom padding so it stays above keyboard */}
+            <View style={styles.field}>
+              <AppTextInput
+                label="Work description / comments"
+                placeholder="Describe work performed..."
+                multiline
+                style={styles.multiline}
+                value={description}
+                onChangeText={setDescription}
+              />
+            </View>
+
+            <View style={styles.buttonWrap}>
+              <AppButton label="Save draft" onPress={handleSaveDraft} />
+            </View>
           </View>
-        </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </AppLayout>
   );
 };
@@ -187,7 +201,9 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   // ✅ Scroll padding + web responsiveness
   scrollContent: {
-    paddingBottom: spacing.xl,
+    // Extra bottom padding so the description box + Save button
+    // are always visible above the keyboard on both iOS and Android.
+    paddingBottom: 200,
     paddingHorizontal: spacing.md,
   },
 

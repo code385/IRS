@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AppLayout from '../components/AppLayout';
 import AppButton from '../components/AppButton';
@@ -32,44 +32,50 @@ const SignupScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <AppLayout>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
       >
-        <View style={styles.header}>
-          <Text style={styles.appTitle}>Request access as {role}</Text>
-          <Text style={styles.appSubtitle}>
-            Enter your details. An admin will review and send you a login link.
-          </Text>
-        </View>
-        <View style={styles.card}>
-          <AppTextInput
-            label="Full name"
-            placeholder="Your full name"
-            value={name}
-            onChangeText={setName}
-          />
-          <AppTextInput
-            label="Email"
-            placeholder="name@company.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <AppTextInput
-            label="Additional details"
-            placeholder="Optional message for admin (e.g. team, site, manager)"
-            multiline
-            style={styles.multiline}
-            value={notes}
-            onChangeText={setNotes}
-          />
-          <AppButton
-            label={isSubmitting ? 'Sending request…' : 'Send signup request'}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          />
-        </View>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.appTitle}>Request access as {role}</Text>
+            <Text style={styles.appSubtitle}>
+              Enter your details. An admin will review and send you a login link.
+            </Text>
+          </View>
+          <View style={styles.card}>
+            <AppTextInput
+              label="Full name"
+              placeholder="Your full name"
+              value={name}
+              onChangeText={setName}
+            />
+            <AppTextInput
+              label="Email"
+              placeholder="name@company.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <AppTextInput
+              label="Additional details"
+              placeholder="Optional message for admin (e.g. team, site, manager)"
+              multiline
+              style={styles.multiline}
+              value={notes}
+              onChangeText={setNotes}
+            />
+            <AppButton
+              label={isSubmitting ? 'Sending request…' : 'Send signup request'}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+            />
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </AppLayout>
   );
@@ -78,7 +84,11 @@ const SignupScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingBottom: 40,
   },
   header: {
     marginBottom: spacing.lg,

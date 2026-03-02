@@ -2,25 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useFonts, Lato_400Regular, Lato_700Bold } from '@expo-google-fonts/lato';
-import {
-  View,
-  ActivityIndicator,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors } from './src/theme/colors';
 import { useAuthStore } from './src/store/authStore';
 
-const FONT_LOAD_TIMEOUT_MS = 4000;
+// Reduced from 4000 to 1500 — show app faster even if fonts aren't ready
+const FONT_LOAD_TIMEOUT_MS = 1500;
 
 function AppContent() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
-  
+
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-  
+
   return (
     <>
       <StatusBar style="auto" />
@@ -58,28 +53,14 @@ class ErrorBoundary extends React.Component<
 }
 
 const errorStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 24,
-  },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 24 },
   title: { fontSize: 18, marginBottom: 16, textAlign: 'center' },
-  button: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
+  button: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   buttonText: { color: '#fff', fontWeight: '600' },
 });
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    Lato_400Regular,
-    Lato_700Bold,
-  });
+  const [fontsLoaded] = useFonts({ Lato_400Regular, Lato_700Bold });
   const [timeoutReached, setTimeoutReached] = useState(false);
 
   useEffect(() => {
@@ -87,6 +68,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
+  // Show app immediately when fonts load OR after 1.5s timeout
   const showApp = fontsLoaded || timeoutReached;
 
   if (!showApp) {
@@ -105,10 +87,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
 });

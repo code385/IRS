@@ -202,6 +202,7 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <>
             <Text style={styles.sectionTitle}>Comment (required for rejection)</Text>
             <AppTextInput
+              label="Rejection comment"
               placeholder="Add comment..."
               multiline
               style={styles.commentInput}

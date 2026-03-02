@@ -291,7 +291,7 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <AppLayout>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         {/* ✅ ScrollView fixes missing buttons on web/small screens */}

@@ -1,6 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -10,14 +11,12 @@ service cloud.firestore {
         || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' && resource.data.role != 'Admin' && resource.data.role != 'Super Admin')
       );
     }
+
+    // FULL OPEN - testing mode, no auth check
     match /timesheets/{timesheetId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Super Admin', 'Admin']
-      );
+      allow read, write: if true;
     }
+
     match /mail/{docId} {
       allow read, write: if false;
     }

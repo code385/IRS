@@ -51,6 +51,13 @@ const toYYYYMMDD = (d: Date) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const formatWeekStartLabel = (d: Date) => {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
 const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const modalMaxWidth = Math.min(520, width - 32);
@@ -165,11 +172,26 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             key={day.id}
             style={styles.dayCard}
-            onPress={() =>
+            onPress={() => {
+              if (!user?.id) {
+                Alert.alert('Error', 'User not logged in.');
+                return;
+              }
+
+              const weekStartLabel = formatWeekStartLabel(startDate);
+              const weekEndLabel = formatDayWithDate(weekEndDate);
+              // Firestore doc IDs cannot contain '/' — replace with '-'
+              const safeWeekStart = weekStartLabel.replace(/\//g, '-');
+              const weekId = `${user.id}_${safeWeekStart}`;
+
               navigation.navigate('DayTimesheetEntry', {
+                dayId: String(day.id),
                 dayLabel: day.label,
-              })
-            }
+                weekEndId: weekId,
+                weekEndLabel: weekEndLabel,
+                weekStart: weekStartLabel,
+              });
+            }}
           >
             <Text>{day.label}</Text>
             <Text>{day.hours} hrs</Text>

@@ -29,9 +29,12 @@
       "package": "com.hashturn.irstimesheet"
     },
     "web": {
-      "name": "IRS Timesheet",          
-      "shortName": "IRS",            
+      "name": "IRS Timesheet",
+      "shortName": "IRS",
       "favicon": "./assets/icon.png"
+    },
+    "updates": {
+      "enabled": false
     },
     "extra": {
       "eas": {
@@ -39,7 +42,8 @@
       }
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ]
   }
 }

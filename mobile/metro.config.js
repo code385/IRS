@@ -1,16 +1,30 @@
-// Metro config tweaked for Firebase + Expo (CommonJS format for Node on Windows)
 const { getDefaultConfig } = require('@expo/metro-config');
 
 /** @type {import('metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Ensure Firebase's CommonJS (.cjs) files are handled correctly
+// Handle Firebase CommonJS (.cjs) files
 if (!config.resolver.sourceExts.includes('cjs')) {
   config.resolver.sourceExts.push('cjs');
 }
 
-// Work around Firebase + Expo SDK 53+ package exports issue
+// Fix Firebase + Expo SDK 53+ package exports issue
 config.resolver.unstable_enablePackageExports = false;
 
-module.exports = config;
+// Minifier options for smaller + faster production bundles
+config.transformer = {
+  ...config.transformer,
+  minifierConfig: {
+    keep_classnames: false,
+    keep_fnames: false,
+    mangle: { toplevel: false },
+    output: { ascii_only: true, quote_style: 3, wrap_iife: true },
+    sourceMap: { includeSources: false },
+    toplevel: false,
+    compress: {
+      reduce_funcs: false,
+    },
+  },
+};
 
+module.exports = config;
