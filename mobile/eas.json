@@ -10,6 +10,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=4096"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -18,10 +21,20 @@
       }
     },
     "production": {
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=4096"
+      },
       "android": {
         "buildType": "app-bundle"
       },
       "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "5UXZ3G57DP"
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../store/authStore';
 import AppLayout from '../components/AppLayout';
 import AppButton from '../components/AppButton';
@@ -10,6 +11,11 @@ import { typography } from '../theme/typography';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type Props = NativeStackScreenProps<any>;
+
+const PRIVACY_URL =
+  Platform.OS === 'web' && typeof window !== 'undefined'
+    ? `${window.location.origin}/privacy-policy.html`
+    : 'https://hashtimesheet.web.app/privacy-policy.html';
 
 const LoginScreen: React.FC<Props> = ({ route, navigation }) => {
   const [email, setEmail] = useState('');
@@ -78,6 +84,23 @@ const LoginScreen: React.FC<Props> = ({ route, navigation }) => {
               onPress={handleLogin}
               disabled={isLoading}
             />
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  if (Platform.OS === 'web') {
+                    Linking.openURL(PRIVACY_URL);
+                  } else {
+                    await WebBrowser.openBrowserAsync(PRIVACY_URL);
+                  }
+                } catch (e) {
+                  Alert.alert('Error', 'Could not open Privacy Policy. Please check your internet connection.');
+                }
+              }}
+              style={styles.privacyLink}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.privacyLinkText}>Privacy Policy</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -117,6 +140,15 @@ const styles = StyleSheet.create({
   title: {
     ...typography.screenTitle,
     marginBottom: spacing.md,
+  },
+  privacyLink: {
+    marginTop: spacing.md,
+    alignSelf: 'center',
+  },
+  privacyLinkText: {
+    ...typography.body,
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
 });
 
