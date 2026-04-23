@@ -84,6 +84,7 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       weekEndId: week.id,
       weekEndLabel: week.label,
       weekStart: week.weekStart,
+      onStandby: week.onStandby ?? 'No',
       employeeIdForEdit: week.employeeId,
       initialHours: d.hours,
       initialDayData: d,
@@ -117,7 +118,7 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleExport = async () => {
-    const header = 'Employee,Week End,Week Start,Day,Hours,Status';
+    const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
     const rows = week.days.map((d) =>
       [
         `"${week.employeeName || ''}"`,
@@ -125,6 +126,8 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         `"${week.weekStart}"`,
         `"${d.label}"`,
         d.hours.toFixed(2),
+        d.shiftType || '',
+        d.livingAway || '',
         week.status,
       ].join(',')
     );
@@ -176,11 +179,12 @@ const AdminTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={styles.dayLabel}>{d.label}</Text>
                 <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
               </View>
-              {(d.jobNo || d.location || d.shiftType || d.startTime || d.finishTime) && (
+              {(d.jobNo || d.location || d.shiftType || d.livingAway || d.startTime || d.finishTime) && (
                 <View style={styles.dayMeta}>
                   {d.jobNo && <Text style={styles.dayMetaText}>Job: {d.jobNo}</Text>}
                   {d.location && <Text style={styles.dayMetaText}>Location: {d.location}</Text>}
                   {d.shiftType && <Text style={styles.dayMetaText}>Shift: {d.shiftType}</Text>}
+                  {d.livingAway && <Text style={styles.dayMetaText}>LAFHA: {d.livingAway}</Text>}
                   {(d.startTime || d.finishTime) && (
                     <Text style={styles.dayMetaText}>
                       {d.startTime || '–'} – {d.finishTime || '–'}

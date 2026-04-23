@@ -2,9 +2,67 @@ import React, { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme/colors';
+
+/** Tab icons drawn with pure React Native — no @expo/vector-icons needed */
+function TabIcon({ type, color, size }: { type: 'employee' | 'manager' | 'admin'; color: string; size: number }) {
+  if (type === 'employee') {
+    // Clock icon: circle + hour/minute hands
+    return (
+      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 1.8, borderColor: color, justifyContent: 'center', alignItems: 'center' }}>
+          {/* Hour hand */}
+          <View style={{ position: 'absolute', bottom: '50%', left: '50%', width: 1.5, height: size * 0.26, backgroundColor: color, borderRadius: 1, marginLeft: -0.75, transformOrigin: 'bottom', transform: [{ rotate: '-20deg' }] }} />
+          {/* Minute hand */}
+          <View style={{ position: 'absolute', bottom: '50%', left: '50%', width: 1.5, height: size * 0.33, backgroundColor: color, borderRadius: 1, marginLeft: -0.75, transformOrigin: 'bottom', transform: [{ rotate: '80deg' }] }} />
+          {/* Center dot */}
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: color }} />
+        </View>
+      </View>
+    );
+  }
+
+  if (type === 'manager') {
+    // Clipboard with checkmark
+    return (
+      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+        {/* Clipboard body */}
+        <View style={{ width: size * 0.78, height: size * 0.88, borderWidth: 1.8, borderColor: color, borderRadius: 3, justifyContent: 'center', alignItems: 'center' }}>
+          {/* Clip at top */}
+          <View style={{ position: 'absolute', top: -4, width: size * 0.34, height: 6, borderWidth: 1.8, borderColor: color, borderRadius: 2, backgroundColor: colors.background }} />
+          {/* Checkmark lines */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 4 }}>
+            <View style={{ width: size * 0.16, height: 1.5, backgroundColor: color, transform: [{ rotate: '45deg' }], marginRight: 1 }} />
+            <View style={{ width: size * 0.3, height: 1.5, backgroundColor: color, transform: [{ rotate: '-50deg' }] }} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Admin: shield
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      {/* Shield shape using border + borderRadius trick */}
+      <View style={{
+        width: size * 0.72,
+        height: size * 0.82,
+        borderWidth: 1.8,
+        borderColor: color,
+        borderRadius: 4,
+        borderBottomLeftRadius: size * 0.36,
+        borderBottomRightRadius: size * 0.36,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        {/* Checkmark inside shield */}
+        <Text style={{ color, fontSize: size * 0.32, fontWeight: '700', marginTop: 2 }}>✓</Text>
+      </View>
+    </View>
+  );
+}
 
 // ─── Eagerly loaded (always needed on startup) ────────────────────────────────
 import SplashScreen from '../screens/SplashScreen';
@@ -128,6 +186,26 @@ function AdminStackNavigator() {
   );
 }
 
+const TAB_BAR_STYLE = {
+  backgroundColor: colors.surface,
+  borderTopWidth: 1,
+  borderTopColor: colors.border,
+  height: Platform.OS === 'ios' ? 80 : 64,
+  paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+  paddingTop: 8,
+  elevation: 8,
+  shadowColor: '#000',
+  shadowOpacity: 0.08,
+  shadowOffset: { width: 0, height: -2 },
+  shadowRadius: 8,
+};
+
+const TAB_LABEL_STYLE = {
+  fontSize: 11,
+  fontWeight: '600' as const,
+  letterSpacing: 0.3,
+};
+
 function MainTabs() {
   const user = useAuthStore((s) => s.user);
 
@@ -141,23 +219,74 @@ function MainTabs() {
 
   if (user.role === 'Super Admin' || user.role === 'Admin') {
     return (
-      <Tabs.Navigator screenOptions={{ headerShown: false }}>
-        <Tabs.Screen name="Admin" component={AdminStackNavigator} />
+      <Tabs.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarStyle: TAB_BAR_STYLE,
+          tabBarLabelStyle: TAB_LABEL_STYLE,
+        }}
+      >
+        <Tabs.Screen
+          name="Admin"
+          component={AdminStackNavigator}
+          options={{
+            tabBarLabel: user.role === 'Super Admin' ? 'Super Admin' : 'Admin',
+            tabBarIcon: ({ color, size }) => (
+              <TabIcon type="admin" color={color} size={size} />
+            ),
+          }}
+        />
       </Tabs.Navigator>
     );
   }
 
   if (user.role === 'Manager') {
     return (
-      <Tabs.Navigator screenOptions={{ headerShown: false }}>
-        <Tabs.Screen name="Manager" component={ManagerStackNavigator} />
+      <Tabs.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarStyle: TAB_BAR_STYLE,
+          tabBarLabelStyle: TAB_LABEL_STYLE,
+        }}
+      >
+        <Tabs.Screen
+          name="Manager"
+          component={ManagerStackNavigator}
+          options={{
+            tabBarLabel: 'Manager',
+            tabBarIcon: ({ color, size }) => (
+              <TabIcon type="manager" color={color} size={size} />
+            ),
+          }}
+        />
       </Tabs.Navigator>
     );
   }
 
   return (
-    <Tabs.Navigator screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="Employee" component={EmployeeStackNavigator} />
+    <Tabs.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: TAB_BAR_STYLE,
+        tabBarLabelStyle: TAB_LABEL_STYLE,
+      }}
+    >
+      <Tabs.Screen
+        name="Employee"
+        component={EmployeeStackNavigator}
+        options={{
+          tabBarLabel: 'My Timesheets',
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon type="employee" color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs.Navigator>
   );
 }

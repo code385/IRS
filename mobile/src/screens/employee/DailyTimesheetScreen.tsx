@@ -16,7 +16,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AppLayout from '../../components/AppLayout';
 import AppTextInput from '../../components/AppTextInput';
 import AppButton from '../../components/AppButton';
-import AppDropdown from '../../components/AppDropdown';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { colors } from '../../theme/colors';
@@ -63,6 +62,7 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
   const modalMaxWidth = Math.min(520, width - 32);
 
   const user = useAuthStore((s) => s.user);
+  const weeks = useTimesheetStore((s) => s.weeks);
   const submitWeek = useTimesheetStore((s) => s.submitWeek);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
 
@@ -70,7 +70,6 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
   const [startDate, setStartDate] = useState(defaultMonday);
 
   const [companyName, setCompanyName] = useState('Infrastructure Renewal Services');
-  const [onStandby, setOnStandby] = useState<'Yes' | 'No'>('No');
 
   const [showPicker, setShowPicker] = useState(false);
   const [tempDate, setTempDate] = useState(defaultMonday);
@@ -85,6 +84,17 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
   const titleLabel = useMemo(() => {
     return `Timesheet ${formatDayWithDate(startDate)} to ${formatDayWithDate(weekEndDate)}`;
   }, [startDate, weekEndDate]);
+
+  const weekStartLabel = useMemo(() => formatWeekStartLabel(startDate), [startDate]);
+  const weekEndLabel = useMemo(() => formatDayWithDate(weekEndDate), [weekEndDate]);
+  const weekId = useMemo(() => {
+    if (!user?.id) return '';
+    return `${user.id}_${weekStartLabel.replace(/\//g, '-')}`;
+  }, [user?.id, weekStartLabel]);
+  const currentWeek = useMemo(() => {
+    if (!weekId) return undefined;
+    return weeks.find((w) => w.id === weekId);
+  }, [weekId, weeks]);
 
   const applySelectedDate = (selectedDate: Date) => {
     const monday = getMondayOfWeek(selectedDate);
@@ -112,8 +122,13 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    if (!currentWeek || !currentWeek.days?.some((d) => d.hours > 0)) {
+      Alert.alert('No entries', 'Please add at least one daily entry before submitting.');
+      return;
+    }
+
     try {
-      await submitWeek('temp');
+      await submitWeek(currentWeek.id);
       await loadWeeks(user.id);
       Alert.alert('Submitted', 'Timesheet submitted successfully.');
       navigation.goBack();
@@ -157,15 +172,6 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.field}>
-          <AppDropdown
-            label="On standby this week?"
-            value={onStandby}
-            options={['Yes', 'No']}
-            onSelect={(v) => setOnStandby(v as 'Yes' | 'No')}
-          />
-        </View>
-
         <Text style={styles.sectionTitle}>Daily Entries</Text>
 
         {days.map((day) => (
@@ -177,19 +183,16 @@ const DailyTimesheetScreen: React.FC<Props> = ({ navigation }) => {
                 Alert.alert('Error', 'User not logged in.');
                 return;
               }
-
-              const weekStartLabel = formatWeekStartLabel(startDate);
-              const weekEndLabel = formatDayWithDate(weekEndDate);
               // Firestore doc IDs cannot contain '/' — replace with '-'
-              const safeWeekStart = weekStartLabel.replace(/\//g, '-');
-              const weekId = `${user.id}_${safeWeekStart}`;
+              const targetWeekId = weekId || `${user.id}_${weekStartLabel.replace(/\//g, '-')}`;
 
               navigation.navigate('DayTimesheetEntry', {
                 dayId: String(day.id),
                 dayLabel: day.label,
-                weekEndId: weekId,
+                weekEndId: targetWeekId,
                 weekEndLabel: weekEndLabel,
                 weekStart: weekStartLabel,
+                onStandby: currentWeek?.onStandby ?? 'No',
               });
             }}
           >

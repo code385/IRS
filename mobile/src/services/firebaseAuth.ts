@@ -2,12 +2,15 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  updateProfile,
   User as FirebaseUser,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, db } from '../config/firebase';
+import app, { auth, db } from '../config/firebase';
 import { Role, User } from '../store/authStore';
 
 export interface UserProfile {
@@ -27,18 +30,15 @@ const formatDate = (date: Date): string => {
 };
 
 export async function loginWithEmail(email: string, password: string): Promise<User> {
-  console.log('Attempting login for:', email);
-  
   let userCredential;
   try {
     userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-    console.log('Firebase Auth login successful:', userCredential.user.uid);
   } catch (authError: any) {
-    console.error('Firebase Auth login error:', authError);
+    if (__DEV__) console.error('Firebase Auth login error:', authError);
     if (authError.code === 'auth/user-not-found') {
       throw new Error('No account found with this email. Please check your email or contact admin.');
-    } else if (authError.code === 'auth/wrong-password') {
-      throw new Error('Incorrect password. Please try again.');
+    } else if (authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
+      throw new Error('Incorrect email or password. Please try again.');
     } else if (authError.code === 'auth/invalid-email') {
       throw new Error('Invalid email format.');
     } else if (authError.code === 'auth/user-disabled') {
@@ -49,17 +49,20 @@ export async function loginWithEmail(email: string, password: string): Promise<U
   }
   
   const firebaseUser = userCredential.user;
-  console.log('Fetching user profile from Firestore...');
+
+  // Check if email is verified
+  if (!firebaseUser.emailVerified) {
+    await signOut(auth);
+    throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+  }
   
   const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
   if (!userDoc.exists()) {
-    console.error('User profile not found in Firestore for UID:', firebaseUser.uid);
     await signOut(auth);
     throw new Error('User profile not found in database. Please contact admin.');
   }
-  
+
   const profile = userDoc.data() as UserProfile;
-  console.log('User profile found:', { name: profile.name, role: profile.role, status: profile.status });
   
   if (profile.status === 'Blocked') {
     await signOut(auth);
@@ -67,7 +70,6 @@ export async function loginWithEmail(email: string, password: string): Promise<U
   }
   
   if (!profile.role) {
-    console.error('User profile missing role field');
     throw new Error('User profile is incomplete. Please contact admin.');
   }
   
@@ -76,10 +78,10 @@ export async function loginWithEmail(email: string, password: string): Promise<U
   if (profile.role === 'Admin' || profile.role === 'Super Admin') {
     try {
       await AsyncStorage.setItem(`admin_password_${email}`, password);
-      // Auto-remove after 1 hour for security
+      // Auto-remove after 8 hours for security
       setTimeout(async () => {
         await AsyncStorage.removeItem(`admin_password_${email}`);
-      }, 3600000); // 1 hour
+      }, 28800000); // 8 hours
     } catch (e) {
       console.warn('Could not store admin password:', e);
     }
@@ -101,7 +103,10 @@ export async function signupWithEmail(
 ): Promise<User> {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const firebaseUser = userCredential.user;
-  
+
+  // Set displayName so Cloud Function can read it via auth.getUser(uid)
+  await updateProfile(firebaseUser, { displayName: name.trim() });
+
   const userProfile: UserProfile = {
     id: firebaseUser.uid,
     name,
@@ -112,7 +117,15 @@ export async function signupWithEmail(
   };
   
   await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
-  
+
+  // Try Resend (Cloud Function) first; fall back to Firebase native
+  try {
+    const fns = getFunctions(app);
+    await httpsCallable(fns, 'sendVerificationEmail')({});
+  } catch {
+    await sendEmailVerification(firebaseUser);
+  }
+
   return {
     id: firebaseUser.uid,
     name,
@@ -136,6 +149,19 @@ export async function logout(): Promise<void> {
 
 export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
+}
+
+export async function resendVerificationEmail(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No user logged in or email already verified');
+  if (user.emailVerified) throw new Error('No user logged in or email already verified');
+  // Try Resend (Cloud Function) first; fall back to Firebase native
+  try {
+    const fns = getFunctions(app);
+    await httpsCallable(fns, 'resendVerificationEmail')({});
+  } catch {
+    await sendEmailVerification(user);
+  }
 }
 
 export async function getCurrentUserProfile(): Promise<User | null> {

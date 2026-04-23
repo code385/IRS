@@ -87,14 +87,23 @@ const MyTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
 
   const mapped = filtered.map((w) => {
     const totalHours = w.days.reduce((sum, d) => sum + d.hours, 0);
+    const reviewerLabel =
+      (w.status === 'Approved' || w.status === 'Rejected') && (w.reviewedByName || w.reviewedByRole)
+        ? `${w.reviewedByName || 'Unknown'} (${w.reviewedByRole || 'Manager'})`
+        : w.status === 'Approved'
+        ? 'Manager'
+        : w.status === 'Rejected'
+        ? '-'
+        : '-';
 
     return {
       id: w.id,
       weekRange: formatFullWeekRange(w.weekStart),
       totalHours,
       status: w.status,
+      onStandby: w.onStandby ?? '-',
       submitted: w.status === 'Submitted' ? 'Yes' : '-',
-      approvedBy: w.status === 'Approved' ? 'Manager' : '-',
+      reviewerLabel,
     };
   });
 
@@ -133,8 +142,15 @@ const MyTimesheetsScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.cardRow}>
-              <Text style={styles.cardLabel}>Approved by</Text>
-              <Text style={styles.cardValue}>{item.approvedBy}</Text>
+              <Text style={styles.cardLabel}>On standby this week?</Text>
+              <Text style={styles.cardValue}>{item.onStandby}</Text>
+            </View>
+
+            <View style={styles.cardRow}>
+              <Text style={styles.cardLabel}>
+                {item.status === 'Approved' ? 'Approved by' : item.status === 'Rejected' ? 'Rejected by' : 'Approved by'}
+              </Text>
+              <Text style={styles.cardValue}>{item.reviewerLabel}</Text>
             </View>
 
             <View style={styles.viewButton}>

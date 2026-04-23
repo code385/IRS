@@ -29,11 +29,18 @@ export interface WeekTimesheet {
   id: string;
   label: string;
   weekStart: string;
+  onStandby?: 'Yes' | 'No';
   status: TimesheetStatus;
   employeeId: string;
   employeeName?: string;
   days: DayDraft[];
   rejectionComment?: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  /** Reviewer who approved/rejected */
+  reviewedById?: string;
+  reviewedByName?: string;
+  reviewedByRole?: string;
 }
 
 interface TimesheetState {
@@ -46,7 +53,8 @@ interface TimesheetState {
     weekId: string,
     weekLabel: string,
     weekStart: string,
-    day: DayDraft
+    day: DayDraft,
+    onStandby?: 'Yes' | 'No'
   ) => Promise<void>;
   submitWeek: (weekId: string) => Promise<void>;
   setWeekStatus: (weekId: string, status: TimesheetStatus, rejectionComment?: string) => Promise<void>;
@@ -104,10 +112,11 @@ export const useTimesheetStore = create<TimesheetState>((set, get) => ({
     weekId: string,
     weekLabel: string,
     weekStart: string,
-    day: DayDraft
+    day: DayDraft,
+    onStandby?: 'Yes' | 'No'
   ) => {
     try {
-      await firebaseSaveDayDraft(userId, weekId, weekLabel, weekStart, day);
+      await firebaseSaveDayDraft(userId, weekId, weekLabel, weekStart, day, onStandby);
       await get().loadWeeks(userId);
     } catch (error) {
       console.error('Error saving day draft:', error);

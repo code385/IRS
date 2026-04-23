@@ -1,5 +1,7 @@
 # Firebase Service Account Key (Security - Never commit!)
 firebase-service-account-key.json
+credentials.json
+credentials/
 
 # Node modules
 node_modules/

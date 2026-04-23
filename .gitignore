@@ -20,6 +20,9 @@ mobile/build/
 # Firebase secrets
 firebase-service-account-key.json
 mobile/firebase-service-account-key.json
+mobile/credentials.json
+mobile/credentials/
+eas-inspect/
 
 # Logs
 *.log

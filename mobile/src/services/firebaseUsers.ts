@@ -10,7 +10,8 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app, { db } from '../config/firebase';
 import { UserRole, UserStatus, AppUser } from '../store/userStore';
 
 const COLLECTION_USERS = 'users';
@@ -66,10 +67,7 @@ export async function updateUser(
 }
 
 export async function deleteUser(userId: string): Promise<void> {
-  const userRef = doc(db, COLLECTION_USERS, userId);
-  await deleteDoc(userRef);
-  
-  // Note: Firebase Auth user deletion requires Admin SDK (Cloud Function)
-  // For now, we only delete Firestore document. Auth user will remain but won't be able to login
-  // because Firestore profile won't exist (login check fails).
+  // Cloud Function deletes from Firebase Auth + Firestore atomically
+  const fns = getFunctions(app);
+  await httpsCallable(fns, 'deleteAuthUser')({ userId });
 }

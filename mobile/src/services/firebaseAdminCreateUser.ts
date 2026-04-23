@@ -26,7 +26,7 @@ export async function createUserAndSendCredentials(
 ): Promise<CreateUserResult> {
   const fn = httpsCallable<
     CreateUserPayload,
-    { data: CreateUserResult }
+    CreateUserResult
   >(functions, 'createUserAndSendCredentials');
   const res = await fn(payload);
   return res.data;

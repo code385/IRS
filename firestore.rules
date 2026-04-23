@@ -2,6 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Helper functions ────────────────────────────────────────────────────
+    function callerRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isManagerOrAbove() {
+      return callerRole() in ['Manager', 'Admin', 'Super Admin'];
+    }
+    function isAdminOrAbove() {
+      return callerRole() in ['Admin', 'Super Admin'];
+    }
+
+    // ── Users collection ────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -12,13 +24,42 @@ service cloud.firestore {
       );
     }
 
-    // FULL OPEN - testing mode, no auth check
+    // ── Timesheets collection ────────────────────────────────────────────────
+    // Employee: read/write own timesheets only (Draft & Rejected editable)
+    // Manager+: read all, update status on any
+    // Admin+:   full access
     match /timesheets/{timesheetId} {
-      allow read, write: if true;
+      // Read: own timesheet OR manager/admin/super-admin
+      allow read: if request.auth != null && (
+        resource.data.employeeId == request.auth.uid ||
+        isManagerOrAbove()
+      );
+
+      // Create: employee creates their own, admin can create on behalf of anyone
+      allow create: if request.auth != null && (
+        request.resource.data.employeeId == request.auth.uid ||
+        isAdminOrAbove()
+      );
+
+      // Update: employee edits their own Draft/Rejected timesheet, manager+ updates any
+      allow update: if request.auth != null && (
+        (resource.data.employeeId == request.auth.uid &&
+          resource.data.status in ['Draft', 'Rejected']) ||
+        isManagerOrAbove()
+      );
+
+      // Delete: admin only
+      allow delete: if request.auth != null && isAdminOrAbove();
     }
 
+    // ── Mail collection — server-side only ──────────────────────────────────
     match /mail/{docId} {
       allow read, write: if false;
     }
+
+    // ── Email verification tokens — Cloud Functions (Admin SDK) only ────────
+    match /emailVerifications/{docId} {
+      allow read, write: if false;
+    }
   }
-}  
+}

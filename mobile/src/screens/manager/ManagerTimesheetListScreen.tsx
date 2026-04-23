@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../../components/AppLayout';
 import { useTimesheetStore, WeekTimesheet, TimesheetStatus } from '../../store/timesheetStore';
 import { spacing } from '../../theme/spacing';
@@ -29,9 +30,11 @@ const ManagerTimesheetListScreen: React.FC<Props> = ({ route, navigation }) => {
   const isLoading = useTimesheetStore((s) => s.isLoading);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
 
-  useEffect(() => {
-    loadWeeks();
-  }, [loadWeeks]);
+  useFocusEffect(
+    useCallback(() => {
+      loadWeeks();
+    }, [loadWeeks])
+  );
 
   const filtered = weeks.filter((w) => w.status === status);
 

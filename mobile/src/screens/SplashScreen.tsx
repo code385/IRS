@@ -48,7 +48,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.loginBtnWrap}>
         <AppButton
           label="Login"
-          onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
+          onPress={() => navigation.navigate('Auth', { mode: 'login' })}
         />
       </View>
     </View>

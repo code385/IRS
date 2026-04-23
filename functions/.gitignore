@@ -1,0 +1,11 @@
+lib/
+node_modules/
+
+# Environment variables — contain API keys, never commit
+.env
+.env.local
+.env.*.local
+
+# Service account key — never commit
+serviceAccount.json
+verifyUser.js

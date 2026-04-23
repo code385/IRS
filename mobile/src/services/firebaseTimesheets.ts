@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { DayDraft, WeekTimesheet, TimesheetStatus } from '../store/timesheetStore';
+import { getUserById } from './firebaseUsers';
 
 const COLLECTION_TIMESHEETS = 'timesheets';
 
@@ -20,12 +21,9 @@ export async function saveDayDraft(
   weekId: string,
   weekLabel: string,
   weekStart: string,
-  day: DayDraft
+  day: DayDraft,
+  onStandby?: 'Yes' | 'No'
 ): Promise<void> {
-  // DEBUG – ye console log check karo browser DevTools me
-  console.log('[saveDayDraft] auth.currentUser:', auth.currentUser?.uid ?? 'NULL – not logged in');
-  console.log('[saveDayDraft] params – userId:', userId, '| weekId:', weekId, '| weekStart:', weekStart);
-
   if (!auth.currentUser) {
     throw new Error('Session expired – please logout and login again, then save the draft.');
   }
@@ -53,6 +51,10 @@ export async function saveDayDraft(
     days: updatedDays,
     updatedAt: Timestamp.now(),
   };
+
+  if (onStandby) {
+    weekData.onStandby = onStandby;
+  }
   
   if (!weekDoc.exists()) {
     weekData.createdAt = Timestamp.now();
@@ -76,14 +78,29 @@ export async function setWeekStatus(
 ): Promise<void> {
   const weekRef = doc(db, COLLECTION_TIMESHEETS, weekId);
   const updateData: any = { status };
-  
+
   if (status === 'Approved' || status === 'Rejected') {
     updateData.reviewedAt = Timestamp.now();
+    const reviewerId = auth.currentUser?.uid;
+    if (reviewerId) {
+      try {
+        const reviewer = await getUserById(reviewerId);
+        if (reviewer) {
+          updateData.reviewedById = reviewerId;
+          updateData.reviewedByName = reviewer.name || 'Unknown';
+          updateData.reviewedByRole = reviewer.role || 'Manager';
+        }
+      } catch {
+        updateData.reviewedById = reviewerId;
+        updateData.reviewedByName = 'Unknown';
+        updateData.reviewedByRole = 'Manager';
+      }
+    }
   }
   if (status === 'Rejected' && rejectionComment?.trim()) {
     updateData.rejectionComment = rejectionComment.trim();
   }
-  
+
   await updateDoc(weekRef, updateData);
 }
 

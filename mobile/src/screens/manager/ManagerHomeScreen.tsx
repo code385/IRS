@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
@@ -15,6 +15,8 @@ import { colors } from '../../theme/colors';
 type Props = NativeStackScreenProps<any>;
 
 const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 400;
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
@@ -27,8 +29,7 @@ const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
     }, [loadWeeks])
   );
 
-  // ✅ pending includes Draft too, because manager edit might make it Draft
-  const pending = weeks.filter((w) => w.status === 'Submitted' || w.status === 'Draft').length;
+  const pending = weeks.filter((w) => w.status === 'Submitted').length;
   const approved = weeks.filter((w) => w.status === 'Approved').length;
   const rejected = weeks.filter((w) => w.status === 'Rejected').length;
 
@@ -45,16 +46,16 @@ const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.statCol}>
+      <View style={[styles.statsRow, isNarrow && styles.statsRowNarrow]}>
+        <View style={[styles.statCol, isNarrow && styles.statColHalf]}>
           <StatCard
-            title="Pending Approval"
+            title="Pending"
             value={String(pending)}
             tone="warning"
             onPress={() => navigation.navigate('ManagerTimesheetList', { status: 'Submitted' })}
           />
         </View>
-        <View style={styles.statCol}>
+        <View style={[styles.statCol, isNarrow && styles.statColHalf]}>
           <StatCard
             title="Approved"
             value={String(approved)}
@@ -62,7 +63,7 @@ const ManagerHomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('ManagerTimesheetList', { status: 'Approved' })}
           />
         </View>
-        <View style={styles.statCol}>
+        <View style={[styles.statCol, isNarrow && styles.statColFull]}>
           <StatCard
             title="Rejected"
             value={String(rejected)}
@@ -105,11 +106,20 @@ const styles = StyleSheet.create({
     marginRight: -spacing.sm,
     marginBottom: spacing.lg,
   },
+  statsRowNarrow: {
+    // wrapping enabled via flexWrap already
+  },
   statCol: {
     width: '33.333%',
     paddingLeft: spacing.sm,
     paddingRight: spacing.sm,
     marginBottom: spacing.md,
+  },
+  statColHalf: {
+    width: '50%',
+  },
+  statColFull: {
+    width: '100%',
   },
 
   sectionTitle: { ...typography.sectionTitle, marginTop: spacing.md, marginBottom: spacing.md },

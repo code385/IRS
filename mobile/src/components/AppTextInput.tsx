@@ -8,6 +8,48 @@ type Props = TextInputProps & {
   showPasswordToggle?: boolean;
 };
 
+/** Eye icon drawn with pure React Native Views — no external package needed */
+function EyeIcon({ hidden, size = 20, color = colors.textSecondary }: {
+  hidden: boolean;
+  size?: number;
+  color?: string;
+}) {
+  const pupil = size * 0.28;
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      {/* Eye oval outline */}
+      <View style={{
+        width: size * 0.92,
+        height: size * 0.58,
+        borderRadius: size * 0.3,
+        borderWidth: 1.6,
+        borderColor: color,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        {/* Pupil */}
+        <View style={{
+          width: pupil,
+          height: pupil,
+          borderRadius: pupil / 2,
+          backgroundColor: color,
+        }} />
+      </View>
+      {/* Strike-through line when password is visible (eye-off state) */}
+      {!hidden && (
+        <View style={{
+          position: 'absolute',
+          width: size * 1.05,
+          height: 1.8,
+          backgroundColor: color,
+          borderRadius: 1,
+          transform: [{ rotate: '-32deg' }],
+        }} />
+      )}
+    </View>
+  );
+}
+
 const AppTextInput: React.FC<Props> = memo(({ label, style, showPasswordToggle, secureTextEntry, ...rest }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
 
@@ -27,9 +69,11 @@ const AppTextInput: React.FC<Props> = memo(({ label, style, showPasswordToggle, 
           <TouchableOpacity
             style={styles.eyeIcon}
             onPress={() => setPasswordVisible((v) => !v)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
           >
-            <Text style={styles.eyeText}>{passwordVisible ? '🙈' : '👁'}</Text>
+            <EyeIcon hidden={!passwordVisible} />
           </TouchableOpacity>
         )}
       </View>
@@ -68,11 +112,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.sm,
     padding: spacing.xs,
-  },
-  eyeText: {
-    fontSize: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
 export default AppTextInput;
-

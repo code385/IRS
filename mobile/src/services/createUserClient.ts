@@ -1,7 +1,8 @@
-import { createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, db } from '../config/firebase';
+import app, { auth, db } from '../config/firebase';
 import { useAuthStore } from '../store/authStore';
 import { UserRole } from '../store/userStore';
 
@@ -28,6 +29,8 @@ export interface CreateUserResult {
   adminReloggedIn?: boolean;
   /** Credentials for sharing via Share button (WhatsApp, Email, etc.) */
   credentials?: { name: string; email: string; password: string; role: string };
+  verificationEmailSent?: boolean;
+  verificationEmailError?: string;
 }
 
 /**
@@ -57,8 +60,9 @@ export async function createUserClientSide(
   }
 
   // Validate inputs
-  if (!email || !email.includes('@')) {
-    throw new Error('Invalid email address');
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!email || !emailRegex.test(email)) {
+    throw new Error('Invalid email address. Please use format: name@company.com');
   }
   if (!password || password.length < 6) {
     throw new Error('Password must be at least 6 characters');
@@ -79,9 +83,6 @@ export async function createUserClientSide(
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      const existingUserDoc = querySnapshot.docs[0].data();
-      const existingUserUid = querySnapshot.docs[0].id;
-      console.log('User already exists in Firestore:', existingUserUid, existingUserDoc);
       throw new Error(`This email "${emailLower}" is already registered. Please use a different email or edit the existing user from User Management.`);
     }
   } catch (queryError: any) {
@@ -89,21 +90,19 @@ export async function createUserClientSide(
       useAuthStore.getState().setReauthenticating(false);
       throw queryError;
     }
-    console.warn('Error checking existing user:', queryError);
+    if (__DEV__) console.warn('Error checking existing user:', queryError);
   }
 
   // Create Firebase Auth user (this will automatically sign in as new user)
   let userCredential;
   let newUserUid: string;
-  
+
   try {
-    console.log('Creating Firebase Auth user:', email);
     userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
     newUserUid = userCredential.user.uid;
-    console.log('Firebase Auth user created:', newUserUid);
   } catch (authError: any) {
     useAuthStore.getState().setReauthenticating(false);
-    console.error('Firebase Auth error:', authError);
+    if (__DEV__) console.error('Firebase Auth error:', authError);
     if (authError.code === 'auth/email-already-in-use') {
       throw new Error(`This email "${emailLower}" is already registered in Firebase Auth. Please use a different email or contact support.`);
     } else if (authError.code === 'auth/invalid-email') {
@@ -117,10 +116,16 @@ export async function createUserClientSide(
   
   newUserUid = userCredential.user.uid;
 
+  // Set displayName so Cloud Function can read it in the verification email
+  try {
+    await updateProfile(userCredential.user, { displayName: name.trim() });
+  } catch (e) {
+    if (__DEV__) console.warn('Could not set displayName:', e);
+  }
+
   // Create Firestore user doc
   const createdStr = formatDate(new Date());
   try {
-    console.log('Creating Firestore user doc:', newUserUid);
     await setDoc(doc(db, 'users', newUserUid), {
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -128,17 +133,25 @@ export async function createUserClientSide(
       status: 'Active',
       created: createdStr,
     });
-    console.log('Firestore user doc created successfully');
   } catch (firestoreError: any) {
-    console.error('Firestore error:', firestoreError);
+    if (__DEV__) console.error('Firestore error:', firestoreError);
     useAuthStore.getState().setReauthenticating(false);
-    try {
-      await signOut(auth);
-    } catch (e) {
-      // Ignore
-    }
+    try { await signOut(auth); } catch (_) { /* ignore */ }
     throw new Error(`Failed to create user profile: ${firestoreError.message || firestoreError.code}`);
   }
+
+  const fns = getFunctions(app);
+
+  // Mark email as verified immediately while still signed in as the new user (self-verification).
+  // Admin is vouching for this user — no email verification needed for any email type.
+  try {
+    await httpsCallable(fns, 'markUserEmailVerified')({ userId: newUserUid });
+  } catch (e) {
+    if (__DEV__) console.warn('Could not mark email as verified:', e);
+  }
+
+  const verificationEmailSent = false;
+  const verificationEmailError: string | undefined = undefined;
 
   // Sign out the new user, then re-login admin
   await signOut(auth);
@@ -150,34 +163,38 @@ export async function createUserClientSide(
       if (storedPassword) {
         await signInWithEmailAndPassword(auth, currentAdminEmail, storedPassword);
         adminReloggedIn = true;
-        console.log('Admin re-logged in successfully');
       } else {
-        console.warn('Admin password not found in storage');
+        if (__DEV__) console.warn('Admin password not found in storage');
       }
     } catch (reloginError: any) {
-      console.error('Failed to re-login admin:', reloginError);
+      if (__DEV__) console.error('Failed to re-login admin:', reloginError);
     }
   }
 
-  await new Promise((resolve) => setTimeout(resolve, adminReloggedIn ? 500 : 1500));
-  useAuthStore.getState().setReauthenticating(false);
-
-  // Ensure auth store reflects admin after re-login (we skipped updates during flow)
+  // Ensure auth store reflects admin after re-login BEFORE clearing isReauthenticating
+  // so the onAuthStateChanged listener does not race and clear the user
   if (adminReloggedIn && auth.currentUser) {
     try {
       const { getCurrentUserProfile } = await import('../services/firebaseAuth');
       const adminUser = await getCurrentUserProfile();
-      useAuthStore.setState({ user: adminUser, isLoading: false });
+      if (adminUser) {
+        useAuthStore.setState({ user: adminUser, isLoading: false });
+      }
     } catch (e) {
       console.warn('Could not refresh admin profile:', e);
     }
   }
+
+  await new Promise((resolve) => setTimeout(resolve, adminReloggedIn ? 300 : 800));
+  useAuthStore.getState().setReauthenticating(false);
 
   return {
     success: true,
     uid: newUserUid,
     adminEmail: currentAdminEmail || undefined,
     adminReloggedIn,
+    verificationEmailSent,
+    verificationEmailError,
     message: adminReloggedIn
       ? `User created successfully! Tap Share to send credentials via WhatsApp or Email.`
       : `User created successfully! Please log in again as admin.`,

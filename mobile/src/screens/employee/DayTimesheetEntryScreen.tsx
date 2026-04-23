@@ -38,6 +38,7 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
     weekEndId,
     weekEndLabel,
     weekStart,
+    onStandby: initialOnStandby,
     employeeIdForEdit,
     initialDayData,
   } = route.params ?? {};
@@ -46,13 +47,16 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
   const effectiveUserId = employeeIdForEdit ?? user?.id;
   const saveDayDraft = useTimesheetStore((s) => s.saveDayDraft);
 
-  const [jobNo, setJobNo] = useState(initialDayData?.jobNo ?? '0479');
-  const [location, setLocation] = useState(initialDayData?.location ?? 'Eastwood');
+  const [jobNo, setJobNo] = useState(initialDayData?.jobNo ?? '');
+  const [location, setLocation] = useState(initialDayData?.location ?? '');
 
   const [startTime, setStartTime] = useState(initialDayData?.startTime ?? '00:00');
   const [finishTime, setFinishTime] = useState(initialDayData?.finishTime ?? '23:45');
 
   const [lunchTaken, setLunchTaken] = useState<'Yes' | 'No'>(initialDayData?.lunchTaken ?? 'Yes');
+  const [onStandby, setOnStandby] = useState<'Yes' | 'No'>(initialOnStandby === 'Yes' ? 'Yes' : 'No');
+  const [shiftType, setShiftType] = useState<'Day' | 'Night'>(initialDayData?.shiftType === 'Night' ? 'Night' : 'Day');
+  const [lafha, setLafha] = useState<'Yes' | 'No'>(initialDayData?.livingAway === 'Yes' ? 'Yes' : 'No');
   const [description, setDescription] = useState(initialDayData?.description ?? '');
 
   const totalHours = useMemo(() => {
@@ -90,17 +94,26 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
     }
 
     try {
-      await saveDayDraft(effectiveUserId, weekEndId, weekEndLabel, weekStart, {
-        id: dayId,
-        label: dayLabel,
-        hours: totalHours,
-        jobNo,
-        location,
-        lunchTaken,
-        startTime,
-        finishTime,
-        description,
-      });
+      await saveDayDraft(
+        effectiveUserId,
+        weekEndId,
+        weekEndLabel,
+        weekStart,
+        {
+          id: dayId,
+          label: dayLabel,
+          hours: totalHours,
+          jobNo,
+          location,
+          lunchTaken,
+          shiftType,
+          livingAway: lafha,
+          startTime,
+          finishTime,
+          description,
+        },
+        onStandby,
+      );
 
       Alert.alert('Draft saved', `${dayLabel} saved successfully.`);
       navigation.goBack();
@@ -130,11 +143,21 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* FORM */}
           <View style={styles.form}>
             <View style={styles.field}>
-              <AppTextInput label="Job no." value={jobNo} onChangeText={setJobNo} />
+              <AppTextInput
+                label="Job no."
+                value={jobNo}
+                onChangeText={setJobNo}
+                placeholder="e.g. 0479"
+              />
             </View>
 
             <View style={styles.field}>
-              <AppTextInput label="Location(s)" value={location} onChangeText={setLocation} />
+              <AppTextInput
+                label="Location(s)"
+                value={location}
+                onChangeText={setLocation}
+                placeholder="e.g. Eastwood"
+              />
             </View>
 
             <View style={styles.field}>
@@ -163,6 +186,36 @@ const DayTimesheetEntryScreen: React.FC<Props> = ({ route, navigation }) => {
                 value={lunchTaken}
                 options={['Yes', 'No']}
                 onSelect={(v) => setLunchTaken(v as 'Yes' | 'No')}
+                fullWidth
+              />
+            </View>
+
+            <View style={styles.field}>
+              <AppDropdown
+                label="On standby this week?"
+                value={onStandby}
+                options={['Yes', 'No']}
+                onSelect={(v) => setOnStandby(v as 'Yes' | 'No')}
+                fullWidth
+              />
+            </View>
+
+            <View style={styles.field}>
+              <AppDropdown
+                label="Shift type"
+                value={shiftType}
+                options={['Day', 'Night']}
+                onSelect={(v) => setShiftType(v as 'Day' | 'Night')}
+                fullWidth
+              />
+            </View>
+
+            <View style={styles.field}>
+              <AppDropdown
+                label="LAFHA (Living Away From Home)"
+                value={lafha}
+                options={['Yes', 'No']}
+                onSelect={(v) => setLafha(v as 'Yes' | 'No')}
                 fullWidth
               />
             </View>

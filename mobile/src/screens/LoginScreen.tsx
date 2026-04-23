@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<any>;
 const PRIVACY_URL =
   Platform.OS === 'web' && typeof window !== 'undefined'
     ? `${window.location.origin}/privacy-policy.html`
-    : 'https://hashtimesheet.web.app/privacy-policy.html';
+    : 'https://irstimesheet.com/privacy-policy.html';
 
 const LoginScreen: React.FC<Props> = ({ route, navigation }) => {
   const [email, setEmail] = useState('');
@@ -34,12 +34,8 @@ const LoginScreen: React.FC<Props> = ({ route, navigation }) => {
       navigation.getParent()?.navigate('Main');
     } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage = error?.message || error?.code || 'Please check your credentials.';
-      Alert.alert(
-        'Login failed',
-        errorMessage + '\n\nPlease verify:\n- Email is correct\n- Password is correct\n- User exists in Firebase',
-        [{ text: 'OK' }]
-      );
+      const errorMessage = error?.message || 'Incorrect email or password. Please try again.';
+      Alert.alert('Login failed', errorMessage, [{ text: 'OK' }]);
     } finally {
       setIsLoading(false);
     }
@@ -84,6 +80,13 @@ const LoginScreen: React.FC<Props> = ({ route, navigation }) => {
               onPress={handleLogin}
               disabled={isLoading}
             />
+            <TouchableOpacity
+              style={styles.signupLink}
+              onPress={() => navigation.navigate('Signup')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.signupLinkText}>Create an account</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={async () => {
                 try {
@@ -140,6 +143,15 @@ const styles = StyleSheet.create({
   title: {
     ...typography.screenTitle,
     marginBottom: spacing.md,
+  },
+  signupLink: {
+    marginTop: spacing.sm,
+    alignSelf: 'center',
+  },
+  signupLinkText: {
+    ...typography.body,
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
   privacyLink: {
     marginTop: spacing.md,

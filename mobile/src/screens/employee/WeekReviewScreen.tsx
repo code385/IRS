@@ -71,7 +71,7 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
   const totalHours = week.days.reduce((sum, d) => sum + d.hours, 0);
 
   const exportSingleWeek = async () => {
-    const header = 'Employee,Week End,Week Start,Day,Hours,Status';
+    const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
     const rows = week.days.map((d) =>
       [
         `"${week.employeeName}"`,
@@ -79,6 +79,8 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
         `"${week.weekStart}"`,
         `"${d.label}"`,
         d.hours.toFixed(2),
+        d.shiftType || '',
+        d.livingAway || '',
         week.status,
       ].join(','),
     );
@@ -93,6 +95,20 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
       <Text style={styles.meta}>Week End: {week.label}</Text>
       <Text style={styles.meta}>Week Start: {week.weekStart}</Text>
       <Text style={styles.meta}>Status: {week.status}</Text>
+      <Text style={styles.meta}>On standby this week? {week.onStandby ?? '-'}</Text>
+
+      {(week.status === 'Approved' || week.status === 'Rejected') && (week.reviewedByName || week.reviewedByRole) && (
+        <Text style={styles.meta}>
+          {week.status === 'Approved' ? 'Approved' : 'Rejected'} by: {week.reviewedByName || 'Unknown'} ({week.reviewedByRole || 'Manager'})
+        </Text>
+      )}
+
+      {week.status === 'Rejected' && week.rejectionComment && (
+        <View style={styles.rejectCard}>
+          <Text style={styles.rejectLabel}>Manager's rejection reason</Text>
+          <Text style={styles.rejectText}>{week.rejectionComment}</Text>
+        </View>
+      )}
 
       <FlatList
         data={week.days}
@@ -106,13 +122,19 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={styles.dayLabel}>{d.label}</Text>
                 <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
               </View>
-              {(d.jobNo || d.location || d.shiftType || d.startTime || d.finishTime) && (
+              {(d.jobNo || d.location || d.shiftType || d.livingAway || d.startTime || d.finishTime || d.description) && (
                 <View style={{ marginTop: 4 }}>
                   {d.jobNo && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Job: {d.jobNo}</Text>}
                   {d.location && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Location: {d.location}</Text>}
                   {d.shiftType && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Shift: {d.shiftType}</Text>}
+                  {d.livingAway && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>LAFHA: {d.livingAway}</Text>}
                   {(d.startTime || d.finishTime) && (
                     <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{d.startTime || '–'} – {d.finishTime || '–'}</Text>
+                  )}
+                  {d.description && (
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }} numberOfLines={3}>
+                      Description: {d.description}
+                    </Text>
                   )}
                 </View>
               )}
@@ -128,6 +150,7 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
                     weekEndId: week.id,
                     weekEndLabel: week.label,
                     weekStart: week.weekStart,
+                    onStandby: week.onStandby ?? 'No',
                     initialHours: d.hours,
                     initialDayData: d,
                   })
@@ -162,6 +185,7 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
                 weekEndId: week.id,
                 weekEndLabel: week.label,
                 weekStart: week.weekStart,
+                onStandby: week.onStandby ?? 'No',
               });
             }}
           />
@@ -178,6 +202,25 @@ const styles = StyleSheet.create({
   },
   meta: {
     ...typography.body,
+  },
+  rejectCard: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 10,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  rejectLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#DC2626',
+    marginBottom: spacing.xs,
+  },
+  rejectText: {
+    ...typography.body,
+    color: colors.textPrimary,
   },
   dayRow: {
     flexDirection: 'row',

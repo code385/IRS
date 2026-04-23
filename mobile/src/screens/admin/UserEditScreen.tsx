@@ -163,8 +163,8 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
 
         const creds = result.credentials;
         const msg = creds
-          ? `IRS Timesheet – Login credentials\n\nName: ${creds.name}\nEmail: ${creds.email}\nPassword: ${creds.password}\nRole: ${creds.role}\n\nUse these to sign in to the app.`
-          : `IRS Timesheet – Login credentials\n\nEmail: ${email.trim().toLowerCase()}\nPassword: ${password}\nRole: ${role}\n\nUse these to sign in to the app.`;
+          ? `IRS Timesheet – Login credentials\n\nName: ${creds.name}\nEmail: ${creds.email}\nPassword: ${creds.password}\nRole: ${creds.role}\n\nYour account is ready. Open the app and sign in with these credentials.`
+          : `IRS Timesheet – Login credentials\n\nEmail: ${email.trim().toLowerCase()}\nPassword: ${password}\nRole: ${role}\n\nYour account is ready. Open the app and sign in with these credentials.`;
 
         if (Platform.OS === 'web') {
           await shareCredentials(msg);
@@ -178,7 +178,7 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
 
         Alert.alert(
           'User created successfully! ✅',
-          result.message || `New user "${name}" has been created. Tap Share to send credentials.`,
+          result.message || `New user "${name}" has been created and can log in immediately.`,
           [{ text: 'OK' }, { text: 'Share credentials', onPress: () => shareCredentials(msg) }]
         );
       } catch (err: any) {

@@ -35,7 +35,9 @@ const ReportsScreen: React.FC<Props> = ({ navigation }) => {
     loadWeeks();
   }, [loadWeeks]);
 
-  const employees = Array.from(new Set(weeks.map((w) => w.employeeName).filter(Boolean)));
+  const employees = Array.from(
+    new Set(weeks.map((w) => w.employeeName).filter((name): name is string => Boolean(name))),
+  );
   const activeEmployee = selectedEmployee ?? (employees[0] ?? null);
 
   const filteredWeeks = useMemo(

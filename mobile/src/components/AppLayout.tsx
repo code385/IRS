@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  View,
-  ViewStyle,
-  Platform,
-} from 'react-native';
+import { StatusBar, StyleSheet, View, ViewStyle, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
@@ -53,12 +47,10 @@ const styles = StyleSheet.create({
   // Shared inner container
   inner: {
     flex: 1,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: Platform.OS === 'web' ? spacing.lg : spacing.md,
     width: '100%',
     maxWidth: 1100,
     alignSelf: 'center',
-
-    // ✅ Make sure clicks propagate correctly on web
     overflow: 'visible',
   },
 });

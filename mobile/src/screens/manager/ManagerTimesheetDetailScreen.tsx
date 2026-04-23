@@ -97,6 +97,7 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
       weekEndId: week.id,
       weekEndLabel: week.label,
       weekStart: week.weekStart,
+      onStandby: week.onStandby ?? 'No',
       employeeIdForEdit: week.employeeId,
       initialHours: d.hours,
       initialDayData: d,
@@ -130,7 +131,7 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
   };
 
   const handleExport = async () => {
-    const header = 'Employee,Week End,Week Start,Day,Hours,Status';
+    const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
     const rows = week.days.map((d) =>
       [
         `"${week.employeeName || ''}"`,
@@ -138,6 +139,8 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
         `"${week.weekStart}"`,
         `"${d.label}"`,
         d.hours.toFixed(2),
+        d.shiftType || '',
+        d.livingAway || '',
         week.status,
       ].join(',')
     );
@@ -183,8 +186,16 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
           {week.days.map((d) => (
             <TouchableOpacity key={d.id} style={styles.dayRow} onPress={() => handleEditDay(d)} activeOpacity={0.85}>
               <View style={styles.dayMain}>
-                <Text style={styles.dayLabel}>{d.label}</Text>
-                <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
+                <View style={styles.dayMainRow}>
+                  <Text style={styles.dayLabel}>{d.label}</Text>
+                  <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
+                </View>
+                {(d.shiftType || d.livingAway) && (
+                  <View style={styles.dayMetaRow}>
+                    {d.shiftType && <Text style={[styles.dayMetaText, { marginRight: 12 }]}>Shift: {d.shiftType}</Text>}
+                    {d.livingAway && <Text style={styles.dayMetaText}>LAFHA: {d.livingAway}</Text>}
+                  </View>
+                )}
               </View>
 
               <View style={styles.editPill}>
@@ -296,14 +307,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  dayMain: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
+  dayMain: { flex: 1 },
+  dayMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dayMetaRow: { flexDirection: 'row', marginTop: 4 },
   dayLabel: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
   dayHours: { fontWeight: '800', color: colors.primary },
+  dayMetaText: { fontSize: 13, color: colors.textSecondary },
 
   editPill: {
     alignSelf: 'flex-start',

@@ -82,11 +82,12 @@ const TimesheetReviewScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={styles.dayLabel}>{d.label}</Text>
                   <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
                 </View>
-                {(d.jobNo || d.location || d.shiftType || d.startTime || d.finishTime) && (
+                {(d.jobNo || d.location || d.shiftType || d.livingAway || d.startTime || d.finishTime) && (
                   <View style={styles.dayMeta}>
                     {d.jobNo && <Text style={styles.dayMetaText}>Job: {d.jobNo}</Text>}
                     {d.location && <Text style={styles.dayMetaText}>Location: {d.location}</Text>}
                     {d.shiftType && <Text style={styles.dayMetaText}>Shift: {d.shiftType}</Text>}
+                    {d.livingAway && <Text style={styles.dayMetaText}>LAFHA: {d.livingAway}</Text>}
                     {(d.startTime || d.finishTime) && (
                       <Text style={styles.dayMetaText}>{d.startTime || '–'} – {d.finishTime || '–'}</Text>
                     )}

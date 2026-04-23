@@ -89,7 +89,7 @@ const AdminExportScreen: React.FC<Props> = () => {
     setIsExporting(true);
     try {
       const rows: string[] = [];
-      const header = 'Employee,Week End,Week Start,Day,Hours,Status';
+      const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
       rows.push(header);
 
       for (const week of toExport) {
@@ -101,6 +101,8 @@ const AdminExportScreen: React.FC<Props> = () => {
               `"${week.weekStart}"`,
               `"${d.label}"`,
               d.hours.toFixed(2),
+              d.shiftType || '',
+              d.livingAway || '',
               week.status,
             ].join(',')
           );
