@@ -130,6 +130,26 @@ const ManagerStack  = createNativeStackNavigator();
 const AdminStack    = createNativeStackNavigator();
 const Tabs          = createBottomTabNavigator();
 
+const STACK_SCREEN_OPTIONS = {
+  headerShown: true,
+  headerStyle: {
+    backgroundColor: colors.surface,
+  },
+  headerShadowVisible: false,
+  headerTintColor: colors.textPrimary,
+  headerTitleStyle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700' as const,
+  },
+  contentStyle: {
+    backgroundColor: colors.background,
+  },
+  statusBarStyle: 'dark' as const,
+  statusBarColor: colors.surface,
+  statusBarTranslucent: false,
+};
+
 function AuthStackNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
@@ -141,7 +161,7 @@ function AuthStackNavigator() {
 
 function EmployeeStackNavigator() {
   return (
-    <EmployeeStack.Navigator>
+    <EmployeeStack.Navigator screenOptions={STACK_SCREEN_OPTIONS}>
       <EmployeeStack.Screen name="EmployeeHome"        component={withSuspense(EmployeeHomeScreen)}        options={{ title: 'Employee Dashboard' }} />
       <EmployeeStack.Screen name="DailyTimesheet"      component={withSuspense(DailyTimesheetScreen)}      options={{ title: 'Home' }} />
       <EmployeeStack.Screen name="DayTimesheetEntry"   component={withSuspense(DayTimesheetEntryScreen)}   options={{ title: 'Main Page' }} />
@@ -156,7 +176,7 @@ function EmployeeStackNavigator() {
 
 function ManagerStackNavigator() {
   return (
-    <ManagerStack.Navigator>
+    <ManagerStack.Navigator screenOptions={STACK_SCREEN_OPTIONS}>
       <ManagerStack.Screen name="ManagerHome"          component={withSuspense(ManagerHomeScreen)}            options={{ title: 'Manager Dashboard' }} />
       <ManagerStack.Screen name="PendingTimesheets"    component={withSuspense(PendingTimesheetsScreen)}      options={{ title: 'Pending Timesheets' }} />
       <ManagerStack.Screen name="TimesheetReview"      component={withSuspense(TimesheetReviewScreen)}        options={{ title: 'Review Timesheet' }} />
@@ -170,7 +190,7 @@ function ManagerStackNavigator() {
 
 function AdminStackNavigator() {
   return (
-    <AdminStack.Navigator>
+    <AdminStack.Navigator screenOptions={STACK_SCREEN_OPTIONS}>
       <AdminStack.Screen name="AdminHome"             component={withSuspense(AdminHomeScreen)}             options={{ title: 'Admin Dashboard' }} />
       <AdminStack.Screen name="UserManagement"        component={withSuspense(UserManagementScreen)}        options={{ title: 'Users' }} />
       <AdminStack.Screen name="UserEdit"              component={withSuspense(UserEditScreen)}              options={{ title: 'User' }} />

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { exportCsvAsFile } from '../../utils/csvExport';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AppLayout from '../../components/AppLayout';
@@ -7,10 +7,16 @@ import AppButton from '../../components/AppButton';
 import { useTimesheetStore } from '../../store/timesheetStore';
 import { useAuthStore } from '../../store/authStore';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<any>;
+
+const STATUS_CONFIG: Record<string, { bg: string; color: string }> = {
+  Approved:  { bg: colors.successSurface, color: colors.success },
+  Submitted: { bg: colors.infoSurface,    color: colors.info    },
+  Rejected:  { bg: colors.errorSurface,   color: colors.error   },
+  Draft:     { bg: colors.warningSurface, color: colors.warning },
+};
 
 const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
   const { weekId, canEdit = false, showExport = false } = route.params ?? {};
@@ -20,12 +26,8 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
 
   useEffect(() => {
-    // Reload weeks to ensure we have latest data
-    if (user?.id) {
-      loadWeeks(user.id);
-    } else {
-      loadWeeks();
-    }
+    if (user?.id) loadWeeks(user.id);
+    else loadWeeks();
   }, [weekId, user?.id, loadWeeks]);
 
   const week = weeks.find((w) => w.id === weekId);
@@ -33,34 +35,24 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!week) {
     return (
       <AppLayout>
-        <Text style={styles.title}>Week not found</Text>
+        <Text style={styles.notFound}>Week not found</Text>
       </AppLayout>
     );
   }
 
   const handleSubmit = async () => {
-    if (!week) {
-      Alert.alert('Error', 'Week not found.');
-      return;
-    }
-
     if (week.status !== 'Draft') {
       Alert.alert('Already submitted', 'This timesheet has already been submitted.');
       return;
     }
-
     if (!week.days || week.days.length === 0 || week.days.every((d) => d.hours === 0)) {
       Alert.alert('No hours', 'Please add at least one day with hours before submitting.');
       return;
     }
-
     try {
       await submitWeek(week.id);
-      if (user?.id) {
-        await loadWeeks(user.id);
-      } else {
-        await loadWeeks();
-      }
+      if (user?.id) await loadWeeks(user.id);
+      else await loadWeeks();
       Alert.alert('Submitted', 'Timesheet submitted to manager successfully.');
       navigation.goBack();
     } catch (error: any) {
@@ -73,175 +65,304 @@ const WeekReviewScreen: React.FC<Props> = ({ route, navigation }) => {
   const exportSingleWeek = async () => {
     const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
     const rows = week.days.map((d) =>
-      [
-        `"${week.employeeName}"`,
-        `"${week.label}"`,
-        `"${week.weekStart}"`,
-        `"${d.label}"`,
-        d.hours.toFixed(2),
-        d.shiftType || '',
-        d.livingAway || '',
-        week.status,
-      ].join(','),
+      [`"${week.employeeName}"`, `"${week.label}"`, `"${week.weekStart}"`, `"${d.label}"`, d.hours.toFixed(2), d.shiftType || '', d.livingAway || '', week.status].join(',')
     );
     const csv = [header, ...rows].join('\n');
     await exportCsvAsFile(csv, `timesheet_${week.employeeName || 'export'}`);
   };
 
+  const statusCfg = STATUS_CONFIG[week.status] ?? { bg: colors.background, color: colors.textMuted };
+
   return (
     <AppLayout>
-      <Text style={styles.title}>{week.label}</Text>
-      
-      <Text style={styles.meta}>Week End: {week.label}</Text>
-      <Text style={styles.meta}>Week Start: {week.weekStart}</Text>
-      <Text style={styles.meta}>Status: {week.status}</Text>
-      <Text style={styles.meta}>On standby this week? {week.onStandby ?? '-'}</Text>
-
-      {(week.status === 'Approved' || week.status === 'Rejected') && (week.reviewedByName || week.reviewedByRole) && (
-        <Text style={styles.meta}>
-          {week.status === 'Approved' ? 'Approved' : 'Rejected'} by: {week.reviewedByName || 'Unknown'} ({week.reviewedByRole || 'Manager'})
-        </Text>
-      )}
-
-      {week.status === 'Rejected' && week.rejectionComment && (
-        <View style={styles.rejectCard}>
-          <Text style={styles.rejectLabel}>Manager's rejection reason</Text>
-          <Text style={styles.rejectText}>{week.rejectionComment}</Text>
-        </View>
-      )}
-
-      <FlatList
-        data={week.days}
-        keyExtractor={(d) => d.id}
-        style={{ marginTop: spacing.md }}
-        contentContainerStyle={{ paddingBottom: spacing.lg }}
-        renderItem={({ item: d }) => (
-          <View style={styles.dayRow}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={styles.dayLabel}>{d.label}</Text>
-                <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
-              </View>
-              {(d.jobNo || d.location || d.shiftType || d.livingAway || d.startTime || d.finishTime || d.description) && (
-                <View style={{ marginTop: 4 }}>
-                  {d.jobNo && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Job: {d.jobNo}</Text>}
-                  {d.location && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Location: {d.location}</Text>}
-                  {d.shiftType && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Shift: {d.shiftType}</Text>}
-                  {d.livingAway && <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>LAFHA: {d.livingAway}</Text>}
-                  {(d.startTime || d.finishTime) && (
-                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{d.startTime || '–'} – {d.finishTime || '–'}</Text>
-                  )}
-                  {d.description && (
-                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }} numberOfLines={3}>
-                      Description: {d.description}
-                    </Text>
-                  )}
-                </View>
-              )}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.weekCard}>
+          <View style={styles.weekCardHeader}>
+            <View style={styles.weekCardTitle}>
+              <Text style={styles.weekLabel}>{week.label}</Text>
+              <Text style={styles.weekStart}>Week starting {week.weekStart}</Text>
             </View>
-            {canEdit && (
-              <AppButton
-                label="Edit"
-                variant="secondary"
-                onPress={() =>
-                  navigation.navigate('DayTimesheetEntry', {
-                    dayId: d.id,
-                    dayLabel: d.label,
-                    weekEndId: week.id,
-                    weekEndLabel: week.label,
-                    weekStart: week.weekStart,
-                    onStandby: week.onStandby ?? 'No',
-                    initialHours: d.hours,
-                    initialDayData: d,
-                  })
-                }
-              />
+            <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
+              <Text style={[styles.statusText, { color: statusCfg.color }]}>{week.status}</Text>
+            </View>
+          </View>
+
+          <View style={styles.weekMeta}>
+            {week.employeeName && (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Employee</Text>
+                <Text style={styles.metaValue}>{week.employeeName}</Text>
+              </View>
+            )}
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>On Standby</Text>
+              <Text style={styles.metaValue}>{week.onStandby ?? '-'}</Text>
+            </View>
+            {(week.status === 'Approved' || week.status === 'Rejected') && (week.reviewedByName || week.reviewedByRole) && (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>{week.status === 'Approved' ? 'Approved By' : 'Rejected By'}</Text>
+                <Text style={styles.metaValue}>{week.reviewedByName || 'Unknown'} ({week.reviewedByRole || 'Manager'})</Text>
+              </View>
             )}
           </View>
-        )}
-      />
 
-      <Text style={styles.total}>Total: {totalHours.toFixed(2)} h</Text>
+          {week.status === 'Rejected' && week.rejectionComment && (
+            <View style={styles.rejectCard}>
+              <Text style={styles.rejectTitle}>Rejection Reason</Text>
+              <Text style={styles.rejectText}>{week.rejectionComment}</Text>
+            </View>
+          )}
 
-      {week.status === 'Draft' && (
-        <AppButton label="Submit this week" onPress={handleSubmit} />
-      )}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total Hours</Text>
+            <Text style={styles.totalValue}>{totalHours.toFixed(2)} hrs</Text>
+          </View>
+        </View>
 
-      {showExport && (
-        <>
-          <AppButton
-            label="Export timesheet"
-            onPress={exportSingleWeek}
-          />
-          <AppButton
-            label="Edit week"
-            variant="secondary"
-            onPress={() => {
-              const firstDay = week.days[0];
-              if (!firstDay) return;
-              navigation.navigate('DayTimesheetEntry', {
-                dayId: firstDay.id,
-                dayLabel: firstDay.label,
-                weekEndId: week.id,
-                weekEndLabel: week.label,
-                weekStart: week.weekStart,
-                onStandby: week.onStandby ?? 'No',
-              });
-            }}
-          />
-        </>
-      )}
+        <Text style={styles.sectionLabel}>Daily Breakdown</Text>
+
+        {week.days.map((d) => (
+          <View key={d.id} style={[styles.dayCard, d.hours === 0 && styles.dayCardEmpty]}>
+            <View style={styles.dayCardTop}>
+              <Text style={styles.dayCardLabel}>{d.label}</Text>
+              <Text style={[styles.dayCardHours, d.hours > 0 ? styles.dayCardHoursActive : styles.dayCardHoursZero]}>
+                {d.hours.toFixed(2)} hrs
+              </Text>
+            </View>
+            {d.hours > 0 && (
+              <View style={styles.dayCardDetails}>
+                {d.jobNo && <Text style={styles.detailText}>Job: {d.jobNo}</Text>}
+                {d.location && <Text style={styles.detailText}>Location: {d.location}</Text>}
+                {(d.startTime || d.finishTime) && (
+                  <Text style={styles.detailText}>{d.startTime || '–'} – {d.finishTime || '–'}</Text>
+                )}
+                {d.shiftType && <Text style={styles.detailText}>Shift: {d.shiftType}</Text>}
+                {d.livingAway && <Text style={styles.detailText}>LAFHA: {d.livingAway}</Text>}
+                {d.description && <Text style={styles.detailText} numberOfLines={2}>Note: {d.description}</Text>}
+              </View>
+            )}
+            {canEdit && (
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => navigation.navigate('DayTimesheetEntry', {
+                  dayId: d.id, dayLabel: d.label, weekEndId: week.id, weekEndLabel: week.label,
+                  weekStart: week.weekStart, onStandby: week.onStandby ?? 'No', initialHours: d.hours, initialDayData: d,
+                })}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+
+        <View style={styles.actions}>
+          {week.status === 'Draft' && (
+            <AppButton label="Submit This Week" onPress={handleSubmit} fullWidth />
+          )}
+          {showExport && (
+            <>
+              <AppButton label="Export Timesheet" onPress={exportSingleWeek} variant="secondary" fullWidth />
+              <AppButton
+                label="Edit Week"
+                variant="secondary"
+                onPress={() => {
+                  const firstDay = week.days[0];
+                  if (!firstDay) return;
+                  navigation.navigate('DayTimesheetEntry', {
+                    dayId: firstDay.id, dayLabel: firstDay.label, weekEndId: week.id,
+                    weekEndLabel: week.label, weekStart: week.weekStart, onStandby: week.onStandby ?? 'No',
+                  });
+                }}
+                fullWidth
+              />
+            </>
+          )}
+        </View>
+      </ScrollView>
     </AppLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  title: {
-    ...typography.screenTitle,
-    marginBottom: spacing.sm,
+  scroll: { paddingBottom: spacing.xl },
+  notFound: {
+    fontSize: 17,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xl,
   },
-  meta: {
-    ...typography.body,
-  },
-  rejectCard: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 10,
+  weekCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
     padding: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
-  rejectLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#DC2626',
-    marginBottom: spacing.xs,
-  },
-  rejectText: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  dayRow: {
+  weekCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
-  dayLabel: {
-    ...typography.body,
+  weekCardTitle: { flex: 1, paddingRight: spacing.sm },
+  weekLabel: {
+    fontSize: 16,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  weekStart: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  statusBadge: {
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+  },
+  weekMeta: { gap: 4, marginBottom: spacing.sm },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  metaLabel: {
+    fontSize: 13,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+  },
+  metaValue: {
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
     color: colors.textPrimary,
   },
-  dayHours: {
-    fontWeight: '600',
+  rejectCard: {
+    backgroundColor: colors.errorSurface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: `${colors.error}30`,
+  },
+  rejectTitle: {
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.error,
+    marginBottom: 4,
+  },
+  rejectText: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
     color: colors.textPrimary,
+    lineHeight: 20,
   },
-  total: {
-    marginBottom: spacing.lg,
-    fontWeight: '600',
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+    marginTop: spacing.sm,
   },
+  totalLabel: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  totalValue: {
+    fontSize: 20,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: -0.5,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
+  },
+  dayCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dayCardEmpty: {
+    opacity: 0.6,
+  },
+  dayCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dayCardLabel: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    flex: 1,
+    paddingRight: spacing.sm,
+  },
+  dayCardHours: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+  },
+  dayCardHoursActive: { color: colors.success },
+  dayCardHoursZero: { color: colors.textMuted },
+  dayCardDetails: {
+    marginTop: 6,
+    gap: 2,
+  },
+  detailText: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  editBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  actions: { gap: 0, marginTop: spacing.sm },
 });
 
 export default WeekReviewScreen;
-

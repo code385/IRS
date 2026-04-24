@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { Pressable, Text, StyleSheet, Alert, Platform } from 'react-native';
+import { Pressable, Text, View, StyleSheet, Alert, Platform } from 'react-native';
+import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
 type Props = {
@@ -8,15 +9,16 @@ type Props = {
 };
 
 const ProfileIcon: React.FC<Props> = memo(({ userName, onLogout }) => {
-  const handlePress = () => {
-    console.log('PROFILE CLICKED:', Platform.OS);
+  const initials = userName
+    ? userName.trim().split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?';
 
+  const handlePress = () => {
     if (Platform.OS === 'web') {
       const ok = window.confirm('Are you sure you want to logout?');
       if (ok) onLogout();
       return;
     }
-
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', onPress: onLogout, style: 'destructive' },
@@ -25,21 +27,18 @@ const ProfileIcon: React.FC<Props> = memo(({ userName, onLogout }) => {
 
   return (
     <Pressable
-      // ✅ Web pe sometimes onPress miss hota, onClick always works
       onPress={handlePress}
-      // @ts-ignore - RN Web supports onClick
-      onClick={handlePress}
       // @ts-ignore
-      onPointerDown={handlePress}
+      onClick={handlePress}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       hitSlop={10}
       pointerEvents="auto"
     >
-      <Text style={styles.icon}>👤</Text>
+      <View style={styles.avatar}>
+        <Text style={styles.initials}>{initials}</Text>
+      </View>
       {userName ? (
-        <Text style={styles.name} numberOfLines={1}>
-          {userName}
-        </Text>
+        <Text style={styles.name} numberOfLines={1}>{userName.split(' ')[0]}</Text>
       ) : null}
     </Pressable>
   );
@@ -49,26 +48,39 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-
-    // ✅ make sure it stays clickable on top
+    backgroundColor: 'rgba(255,255,255,0.15)',
     zIndex: 999999,
     elevation: 999999,
-
-    // ✅ web UX
     ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : null),
   },
-  pressed: { opacity: 0.85 },
-  icon: { fontSize: 18 },
+  pressed: { opacity: 0.8 },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  initials: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
   name: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-    maxWidth: 120,
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    maxWidth: 100,
   },
 });
 

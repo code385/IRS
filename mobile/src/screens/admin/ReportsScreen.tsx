@@ -1,27 +1,20 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, ScrollView,
 } from 'react-native';
 import AppLayout from '../../components/AppLayout';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { colors } from '../../theme/colors';
 import { useTimesheetStore, TimesheetStatus } from '../../store/timesheetStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type Props = NativeStackScreenProps<any>;
 
-const statusColors: Record<TimesheetStatus, string> = {
-  Draft: colors.textSecondary,
-  Submitted: colors.warning,
-  Approved: colors.success,
-  Rejected: '#DC2626',
+const STATUS_CONFIG: Record<TimesheetStatus, { color: string; bg: string }> = {
+  Draft:     { color: colors.warning,  bg: colors.warningSurface  },
+  Submitted: { color: colors.info,     bg: colors.infoSurface     },
+  Approved:  { color: colors.success,  bg: colors.successSurface  },
+  Rejected:  { color: colors.error,    bg: colors.errorSurface    },
 };
 
 const ReportsScreen: React.FC<Props> = ({ navigation }) => {
@@ -31,9 +24,7 @@ const ReportsScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [isEmployeeOpen, setIsEmployeeOpen] = useState(false);
 
-  useEffect(() => {
-    loadWeeks();
-  }, [loadWeeks]);
+  useEffect(() => { loadWeeks(); }, [loadWeeks]);
 
   const employees = Array.from(
     new Set(weeks.map((w) => w.employeeName).filter((name): name is string => Boolean(name))),
@@ -45,95 +36,77 @@ const ReportsScreen: React.FC<Props> = ({ navigation }) => {
     [weeks, activeEmployee],
   );
 
-  const handleCardPress = useCallback(
-    (weekId: string) => {
-      navigation.navigate('AdminTimesheetDetail', { weekId });
-    },
-    [navigation],
-  );
-
   const renderCard = useCallback(
     ({ item }: { item: typeof filteredWeeks[0] }) => {
       const totalHours = item.days.reduce((s, d) => s + d.hours, 0);
-      const statusColor = statusColors[item.status] || colors.textSecondary;
+      const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.Submitted;
 
       return (
         <TouchableOpacity
           style={styles.card}
-          onPress={() => handleCardPress(item.id)}
-          activeOpacity={0.85}
+          onPress={() => navigation.navigate('AdminTimesheetDetail', { weekId: item.id })}
+          activeOpacity={0.8}
         >
-          <View style={styles.cardHeader}>
-            <Text style={styles.employeeName}>{item.employeeName || 'Unknown'}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: `${statusColor}22` }]}>
-              <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
+          <View style={[styles.cardAccent, { backgroundColor: cfg.color }]} />
+          <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.employeeName}>{item.employeeName || 'Unknown'}</Text>
+              <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
+                <Text style={[styles.badgeText, { color: cfg.color }]}>{item.status}</Text>
+              </View>
             </View>
+            <Text style={styles.weekRange}>{item.label} – {item.weekStart}</Text>
+            <Text style={[styles.hours, { color: cfg.color }]}>{totalHours.toFixed(1)} hrs total</Text>
           </View>
-          <View style={styles.cardBody}>
-            <Text style={styles.weekLabel}>
-              {item.label} – {item.weekStart}
-            </Text>
-            <View style={styles.hoursRow}>
-              <Text style={styles.hoursLabel}>Total</Text>
-              <Text style={styles.hoursValue}>{totalHours.toFixed(1)} h</Text>
-            </View>
-          </View>
-          <View style={styles.cardFooter}>
-            <Text style={styles.tapHint}>Tap to view & edit</Text>
+          <View style={styles.arrow}>
+            <View style={styles.arrowLine} />
+            <View style={styles.arrowHead} />
           </View>
         </TouchableOpacity>
       );
     },
-    [handleCardPress],
+    [navigation],
   );
 
   return (
     <AppLayout>
-      <Text style={styles.title}>Timesheets</Text>
+      <Text style={styles.pageTitle}>Timesheets</Text>
 
-      <View style={styles.filtersRow}>
-        <View style={styles.filter}>
-          <Text style={styles.filterLabel}>Filter by employee</Text>
-          <View style={styles.filterBox}>
-            <TouchableOpacity
-              style={styles.dropdownHeader}
-              onPress={() => setIsEmployeeOpen((p) => !p)}
-            >
-              <Text style={styles.filterValue}>{activeEmployee ?? 'All employees'}</Text>
-              <Text style={styles.dropdownArrow}>{isEmployeeOpen ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            {isEmployeeOpen && (
-              <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+      <View style={styles.filterWrap}>
+        <Text style={styles.filterLabel}>Filter by Employee</Text>
+        <TouchableOpacity
+          style={[styles.filterBox, isEmployeeOpen && styles.filterBoxOpen]}
+          onPress={() => setIsEmployeeOpen((p) => !p)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.filterValue}>{activeEmployee ?? 'All employees'}</Text>
+          <Text style={styles.filterChevron}>{isEmployeeOpen ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+
+        {isEmployeeOpen && (
+          <View style={styles.dropdown}>
+            <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => { setSelectedEmployee(null); setIsEmployeeOpen(false); }}
+              >
+                <Text style={[styles.dropdownItemText, !selectedEmployee && styles.dropdownItemActive]}>All employees</Text>
+              </TouchableOpacity>
+              {employees.map((e) => (
                 <TouchableOpacity
-                  onPress={() => {
-                    setSelectedEmployee(null);
-                    setIsEmployeeOpen(false);
-                  }}
+                  key={e}
+                  style={styles.dropdownItem}
+                  onPress={() => { setSelectedEmployee(e); setIsEmployeeOpen(false); }}
                 >
-                  <Text style={styles.dropdownItem}>All employees</Text>
+                  <Text style={[styles.dropdownItemText, selectedEmployee === e && styles.dropdownItemActive]}>{e}</Text>
                 </TouchableOpacity>
-                {employees.map((e) => (
-                  <TouchableOpacity
-                    key={e}
-                    onPress={() => {
-                      setSelectedEmployee(e);
-                      setIsEmployeeOpen(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownItem}>{e}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
+              ))}
+            </ScrollView>
           </View>
-        </View>
+        )}
       </View>
 
-      {isLoading && (
-        <View style={styles.loading}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      )}
+      {isLoading && <View style={styles.loading}><ActivityIndicator size="small" color={colors.primary} /></View>}
 
       <FlatList
         data={filteredWeeks}
@@ -143,7 +116,8 @@ const ReportsScreen: React.FC<Props> = ({ navigation }) => {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No timesheets</Text>
+              <Text style={styles.emptyTitle}>No timesheets found</Text>
+              <Text style={styles.emptySubtitle}>Employees need to submit timesheets first.</Text>
             </View>
           ) : null
         }
@@ -153,129 +127,107 @@ const ReportsScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  title: {
-    ...typography.screenTitle,
+  pageTitle: {
+    fontSize: 24,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
     marginBottom: spacing.md,
   },
-  filtersRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  filter: {
-    flex: 1,
-  },
+  filterWrap: { marginBottom: spacing.md },
   filterLabel: {
-    ...typography.body,
-    marginBottom: spacing.xs,
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   filterBox: {
-    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    paddingVertical: 12,
     backgroundColor: colors.surface,
+  },
+  filterBoxOpen: {
+    borderColor: colors.primary,
   },
   filterValue: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
     color: colors.textPrimary,
-    fontWeight: '500',
   },
-  dropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  filterChevron: {
+    fontSize: 11,
+    color: colors.textMuted,
   },
-  dropdownArrow: {
-    color: colors.textSecondary,
-  },
-  dropdownList: {
-    marginTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    maxHeight: 200,
+  dropdown: {
+    marginTop: 4,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 4,
+    zIndex: 100,
   },
   dropdownItem: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 11,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
     color: colors.textSecondary,
   },
-  loading: {
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  list: {
-    paddingBottom: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  employeeName: {
-    ...typography.sectionTitle,
-    fontSize: 17,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  cardBody: {
-    paddingVertical: spacing.xs,
-  },
-  weekLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  hoursRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  hoursLabel: {
-    ...typography.body,
-  },
-  hoursValue: {
+  dropdownItemActive: {
+    fontFamily: 'Lato_700Bold',
     fontWeight: '700',
-    fontSize: 18,
     color: colors.primary,
   },
-  cardFooter: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  loading: { paddingVertical: spacing.sm, alignItems: 'center' },
+  list: { paddingBottom: spacing.xl },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
   },
-  tapHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  empty: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    ...typography.body,
-  },
+  cardAccent: { width: 4 },
+  cardContent: { flex: 1, padding: 14 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  employeeName: { fontSize: 15, fontFamily: 'Lato_700Bold', fontWeight: '700', color: colors.textPrimary, flex: 1 },
+  badge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  badgeText: { fontSize: 11, fontFamily: 'Lato_700Bold', fontWeight: '700' },
+  weekRange: { fontSize: 12, fontFamily: 'Lato_400Regular', color: colors.textMuted, marginBottom: 4 },
+  hours: { fontSize: 14, fontFamily: 'Lato_700Bold', fontWeight: '700' },
+  arrow: { paddingRight: 14, flexDirection: 'row', alignItems: 'center' },
+  arrowLine: { width: 10, height: 1.5, backgroundColor: colors.textMuted, borderRadius: 1 },
+  arrowHead: { width: 5, height: 5, borderTopWidth: 1.5, borderRightWidth: 1.5, borderColor: colors.textMuted, transform: [{ rotate: '45deg' }, { translateX: -2.5 }] },
+  empty: { alignItems: 'center', paddingTop: 60 },
+  emptyTitle: { fontSize: 17, fontFamily: 'Lato_700Bold', fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
+  emptySubtitle: { fontSize: 14, fontFamily: 'Lato_400Regular', color: colors.textMuted, textAlign: 'center' },
 });
 
 export default ReportsScreen;

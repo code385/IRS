@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../store/authStore';
 import { useUserStore } from '../../store/userStore';
@@ -37,130 +37,203 @@ const AdminHomeScreen: React.FC<Props> = ({ navigation }) => {
   const rejectedCount = weeks.filter((w) => w.status === 'Rejected').length;
   const totalHours = weeks.reduce((s, w) => s + w.days.reduce((a, d) => a + d.hours, 0), 0);
 
+  const firstName = user?.name?.split(' ')[0] ?? (isSuperAdmin ? 'Super Admin' : 'Admin');
+
   return (
     <AppLayout>
-      <View style={styles.headerBar}>
-        <View>
-          <Text style={styles.appTitle}>{isSuperAdmin ? 'Super Admin' : 'Admin'} portal</Text>
-          <Text style={styles.appSubtitle}>Manage users and timesheets</Text>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.greeting}>Hello, {firstName}</Text>
+              <Text style={styles.headerSubtitle}>
+                {isSuperAdmin ? 'Super Admin' : 'Admin'} Portal
+              </Text>
+            </View>
 
-        {/* ✅ FIX: make right side a row + control pointer events/zIndex for web */}
-        <View style={styles.headerRight} pointerEvents="box-none">
-          <View style={styles.bellWrap} pointerEvents="auto">
-            <NotificationBell
-              count={rejectedCount + openCount}
-              onPress={() => navigation.navigate('AdminRejectedDetail')}
-            />
+            <View style={styles.headerActions} pointerEvents="box-none">
+              <View pointerEvents="auto">
+                <NotificationBell
+                  count={rejectedCount + openCount}
+                  onPress={() => navigation.navigate('AdminRejectedDetail')}
+                />
+              </View>
+              <View pointerEvents="auto" style={styles.profileWrap}>
+                <ProfileIcon
+                  userName={user?.name ?? (isSuperAdmin ? 'Super Admin' : 'Admin')}
+                  onLogout={logout}
+                />
+              </View>
+            </View>
           </View>
 
-          <View style={styles.profileWrap} pointerEvents="auto">
-            <ProfileIcon
-              userName={user?.name ?? (isSuperAdmin ? 'Super Admin' : 'Admin')}
-              onLogout={logout}
-            />
+          <View style={styles.headerMetaRow}>
+            <View style={styles.metaBadge}>
+              <View style={styles.metaDot} />
+              <Text style={styles.metaText}>{filtered.length} team members</Text>
+            </View>
+            <View style={styles.metaBadge}>
+              <Text style={styles.metaText}>{openCount} open timesheets</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.buttonRow}>
-        <AppButton label="Manage Users" onPress={() => navigation.navigate('UserManagement')} />
-        <AppButton
-          label="View timesheets"
-          variant="secondary"
-          onPress={() => navigation.navigate('Reports')}
-        />
-        <AppButton
-          label="Export timesheet (CSV)"
-          variant="secondary"
-          onPress={() => navigation.navigate('AdminExport')}
-        />
-      </View>
+        <Text style={styles.sectionLabel}>Management</Text>
+        <View style={styles.buttonGrid}>
+          <AppButton
+            label="Manage Users"
+            variant="secondary"
+            onPress={() => navigation.navigate('UserManagement')}
+            fullWidth
+          />
+          <AppButton
+            label="View Timesheets"
+            variant="secondary"
+            onPress={() => navigation.navigate('Reports')}
+            fullWidth
+          />
+          <AppButton
+            label="Export CSV"
+            variant="secondary"
+            onPress={() => navigation.navigate('AdminExport')}
+            fullWidth
+          />
+        </View>
 
-      <View style={styles.statsRow}>
-        <StatCard
-          title="Active users"
-          subtitle={`Active: ${activeCount} | Inactive: ${inactiveCount} | Blocked: ${blockedCount}`}
-          value={String(activeCount)}
-          tone="success"
-          onPress={() => navigation.navigate('UserStatsDetail', { hideSuperAdmin })}
-          style={styles.statCard}
-        />
-        <StatCard
-          title="Open timesheets"
-          value={String(openCount)}
-          tone="warning"
-          onPress={() => navigation.navigate('OpenTimesheetsDetail')}
-          style={styles.statCard}
-        />
-        <StatCard
-          title="Total hours"
-          value={totalHours.toFixed(0)}
-          onPress={() => navigation.navigate('TotalHoursDetail')}
-          style={styles.statCard}
-        />
-        <StatCard
-          title="Rejected (by manager)"
-          value={String(rejectedCount)}
-          tone="default"
-          onPress={() => navigation.navigate('AdminRejectedDetail')}
-          style={styles.statCard}
-        />
-      </View>
+        <Text style={styles.sectionLabel}>Overview</Text>
+        <View style={styles.statsGrid}>
+          <StatCard
+            title="Active Users"
+            subtitle={`Inactive: ${inactiveCount}  |  Blocked: ${blockedCount}`}
+            value={String(activeCount)}
+            tone="success"
+            onPress={() => navigation.navigate('UserStatsDetail', { hideSuperAdmin })}
+            style={styles.statHalf}
+          />
+          <StatCard
+            title="Open Timesheets"
+            subtitle="Draft + Submitted"
+            value={String(openCount)}
+            tone="warning"
+            onPress={() => navigation.navigate('OpenTimesheetsDetail')}
+            style={styles.statHalf}
+          />
+          <StatCard
+            title="Total Hours"
+            subtitle="All employees"
+            value={totalHours.toFixed(0)}
+            tone="info"
+            onPress={() => navigation.navigate('TotalHoursDetail')}
+            style={styles.statHalf}
+          />
+          <StatCard
+            title="Rejected"
+            subtitle="By manager"
+            value={String(rejectedCount)}
+            tone="error"
+            onPress={() => navigation.navigate('AdminRejectedDetail')}
+            style={styles.statHalf}
+          />
+        </View>
+      </ScrollView>
     </AppLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  headerBar: {
+  scroll: {
+    paddingBottom: spacing.xl,
+  },
+  header: {
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    padding: spacing.md,
+    borderRadius: 20,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    elevation: 6,
+    overflow: 'visible',
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    overflow: 'visible', // ✅ web: allow touches/overlays correctly
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+    overflow: 'visible',
   },
-  appTitle: {
+  headerTitleWrap: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 22,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
+    letterSpacing: -0.3,
   },
-  appSubtitle: {
-    color: '#FFEBEE',
-    marginTop: spacing.xs,
+  headerSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Lato_400Regular',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
   },
-
-  // ✅ FIX: row layout so bell doesn't overlap profile
-  headerRight: {
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     overflow: 'visible',
   },
-  bellWrap: {
-    zIndex: 1,
-  },
   profileWrap: {
     zIndex: 999999,
     elevation: 999999,
   },
-
-  buttonRow: {
+  headerMetaRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    gap: 5,
+  },
+  metaDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.success,
+  },
+  metaText: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
+  },
+  buttonGrid: {
+    gap: 0,
+    marginBottom: spacing.lg,
+  },
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
   },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  statCard: {
+  statHalf: {
     flex: 1,
-    minWidth: 100,
+    minWidth: 140,
   },
 });
 

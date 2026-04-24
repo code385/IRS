@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
+  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,7 +18,6 @@ import AppLayout from '../../components/AppLayout';
 import AppTextInput from '../../components/AppTextInput';
 import AppButton from '../../components/AppButton';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { colors } from '../../theme/colors';
 import { useUserStore, UserRole, UserStatus } from '../../store/userStore';
 import { useAuthStore } from '../../store/authStore';
@@ -288,129 +288,109 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
     ]);
   };
 
+  const availableRoles = currentUser?.role === 'Super Admin' ? roles : roles.filter((r) => r !== 'Super Admin');
+  const availableStatuses = isSuperAdmin ? statuses : statuses.filter((s) => s !== 'Blocked');
+
   return (
     <AppLayout>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        {/* ✅ ScrollView fixes missing buttons on web/small screens */}
         <ScrollView
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={Platform.OS === 'web'}
         >
-          <Text style={styles.title}>{mode === 'create' ? 'Add new user' : 'Edit user'}</Text>
+          <Text style={styles.pageTitle}>{mode === 'create' ? 'Add New User' : 'Edit User'}</Text>
 
-          <View style={styles.form}>
-            <AppTextInput label="Name" placeholder="Full name" value={name} onChangeText={setName} />
+          <Text style={styles.sectionLabel}>Personal Details</Text>
+          <AppTextInput label="Full Name" placeholder="Enter full name" value={name} onChangeText={setName} autoCapitalize="words" />
+          <AppTextInput
+            label="Email Address"
+            placeholder="user@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+          />
 
-            <AppTextInput
-              label="Email"
-              placeholder="user@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-
-            {(mode === 'create' || (mode === 'edit' && isSuperAdmin)) && (
-              <View style={styles.passwordRow}>
-                <View style={styles.passwordInput}>
-                  <AppTextInput
-                    label={mode === 'create' ? 'Password' : 'New password (optional)'}
-                    placeholder={mode === 'create' ? 'Min 6 characters' : 'Leave empty to keep current password'}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                  />
-                </View>
-
-                <View style={{ marginTop: spacing.sm }}>
-                  <AppButton
-                    label="Generate password"
-                    variant="secondary"
-                    onPress={handleGeneratePassword}
-                  />
-                </View>
-              </View>
-            )}
-
-            {/* ✅ Responsive: narrow screens => column, wide => row */}
-            <View style={[styles.row, isNarrow && styles.rowStack]}>
-              <View style={[styles.half, isNarrow && styles.full]}>
-                <Text style={styles.label}>Role</Text>
-                <View style={styles.dropdown}>
-                  {(currentUser?.role === 'Super Admin' ? roles : roles.filter((r) => r !== 'Super Admin')).map(
-                    (r) => (
-                      <Text
-                        key={r}
-                        style={[styles.option, r === role && styles.optionSelected]}
-                        onPress={() => setRole(r)}
-                      >
-                        {r}
-                      </Text>
-                    )
-                  )}
-                </View>
-              </View>
-
-              <View style={[styles.half, isNarrow && styles.full, isNarrow && { marginTop: spacing.md }]}>
-                <Text style={styles.label}>Status</Text>
-                <View style={styles.dropdown}>
-                  {(isSuperAdmin ? statuses : statuses.filter((s) => s !== 'Blocked')).map((s) => (
-                    <Text
-                      key={s}
-                      style={[styles.option, s === status && styles.optionSelected]}
-                      onPress={() => setStatus(s)}
-                    >
-                      {s}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            </View>
-
-            {/* Actions */}
-            {mode === 'edit' && existing && canBlock && (
-              <View style={{ marginTop: spacing.md }}>
-                <AppButton
-                  label={existing.status === 'Blocked' ? 'Unblock user' : 'Block user'}
-                  variant="secondary"
-                  onPress={handleBlockToggle}
-                  disabled={isSubmitting}
-                />
-              </View>
-            )}
-
-            {mode === 'edit' && existing && canDelete && (
-              <View style={{ marginTop: spacing.sm }}>
-                <AppButton
-                  label="Delete user"
-                  variant="secondary"
-                  onPress={handleDelete}
-                  disabled={isSubmitting}
-                />
-              </View>
-            )}
-
-            {/* ✅ This was not visible before due to missing scroll */}
-            <View style={{ marginTop: spacing.md }}>
-              <AppButton
-                label={
-                  mode === 'create'
-                    ? isSubmitting
-                      ? 'Creating…'
-                      : 'Create user'
-                    : isSubmitting
-                      ? 'Saving…'
-                      : 'Save changes'
-                }
-                onPress={handleSave}
-                disabled={isSubmitting}
+          {(mode === 'create' || (mode === 'edit' && isSuperAdmin)) && (
+            <>
+              <Text style={styles.sectionLabel}>Password</Text>
+              <AppTextInput
+                label={mode === 'create' ? 'Password' : 'New Password (optional)'}
+                placeholder={mode === 'create' ? 'Min 6 characters' : 'Leave empty to keep current'}
+                value={password}
+                onChangeText={setPassword}
+                showPasswordToggle
               />
-            </View>
+              <AppButton
+                label="Generate Random Password"
+                variant="secondary"
+                onPress={handleGeneratePassword}
+                fullWidth
+              />
+            </>
+          )}
+
+          <Text style={styles.sectionLabel}>Role</Text>
+          <View style={styles.chipRow}>
+            {availableRoles.map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.chip, r === role && styles.chipActive]}
+                onPress={() => setRole(r)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.chipText, r === role && styles.chipTextActive]}>{r}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
+          <Text style={styles.sectionLabel}>Status</Text>
+          <View style={styles.chipRow}>
+            {availableStatuses.map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={[styles.chip, s === status && styles.chipActive]}
+                onPress={() => setStatus(s)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.chipText, s === status && styles.chipTextActive]}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.mainAction}>
+            <AppButton
+              label={mode === 'create' ? (isSubmitting ? 'Creating...' : 'Create User') : (isSubmitting ? 'Saving...' : 'Save Changes')}
+              onPress={handleSave}
+              disabled={isSubmitting}
+              fullWidth
+            />
+          </View>
+
+          {mode === 'edit' && existing && canBlock && (
+            <AppButton
+              label={existing.status === 'Blocked' ? 'Unblock User' : 'Block User'}
+              variant="secondary"
+              onPress={handleBlockToggle}
+              disabled={isSubmitting}
+              fullWidth
+            />
+          )}
+
+          {mode === 'edit' && existing && canDelete && (
+            <AppButton
+              label="Delete User"
+              variant="danger"
+              onPress={handleDelete}
+              disabled={isSubmitting}
+              fullWidth
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </AppLayout>
@@ -419,58 +399,57 @@ const UserEditScreen: React.FC<Props> = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: spacing.xl, // ✅ ensures last button never hides
+    flexGrow: 1,
+    paddingBottom: 120,
   },
-  title: {
-    ...typography.screenTitle,
-    marginBottom: spacing.md,
+  pageTitle: {
+    fontSize: 24,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+    marginBottom: spacing.lg,
   },
-  form: {
-    // ❌ gap removed for better cross-platform consistency
-  },
-
-  passwordRow: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
-  passwordInput: {
-    width: '100%',
-  },
-
-  row: {
+  chipRow: {
     flexDirection: 'row',
-    marginTop: spacing.md,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: spacing.sm,
   },
-  rowStack: {
-    flexDirection: 'column',
-  },
-  half: {
-    flex: 1,
-  },
-  full: {
-    width: '100%',
-    flex: 0,
-  },
-
-  label: {
-    ...typography.body,
-    marginBottom: spacing.xs,
-  },
-  dropdown: {
-    borderWidth: 1,
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
   },
-  option: {
-    paddingVertical: 6,
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
     color: colors.textSecondary,
   },
-  optionSelected: {
-    fontWeight: '600',
-    color: colors.textPrimary,
+  chipTextActive: {
+    color: '#FFFFFF',
+  },
+  mainAction: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
 });
 

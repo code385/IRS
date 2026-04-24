@@ -1,15 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-  useWindowDimensions,
+  View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity,
+  ActivityIndicator, Platform, useWindowDimensions,
 } from 'react-native';
 import { exportCsvAsFile } from '../../utils/csvExport';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,22 +13,18 @@ import { useTimesheetStore, WeekTimesheet, TimesheetStatus } from '../../store/t
 import { getWeekById } from '../../services/firebaseTimesheets';
 import { getUserById } from '../../services/firebaseUsers';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<any>;
 
-const statusColors: Record<TimesheetStatus, string> = {
-  Draft: colors.textSecondary,
-  Submitted: colors.warning,
-  Approved: colors.success,
-  Rejected: '#DC2626',
+const STATUS_CONFIG: Record<TimesheetStatus, { color: string; bg: string }> = {
+  Draft:     { color: colors.warning,  bg: colors.warningSurface  },
+  Submitted: { color: colors.info,     bg: colors.infoSurface     },
+  Approved:  { color: colors.success,  bg: colors.successSurface  },
+  Rejected:  { color: colors.error,    bg: colors.errorSurface    },
 };
 
 const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { width } = useWindowDimensions();
-  const isNarrow = width < 720;
-
   const { weekId } = route.params ?? {};
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
   const setWeekStatus = useTimesheetStore((s) => s.setWeekStatus);
@@ -61,11 +50,7 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
     }
   }, [weekId, loadWeeks]);
 
-  useFocusEffect(
-    useCallback(() => {
-      refresh();
-    }, [refresh])
-  );
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   if (isLoading) {
     return (
@@ -80,29 +65,14 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
   if (!week) {
     return (
       <AppLayout>
-        <Text style={styles.title}>Timesheet not found</Text>
+        <Text style={styles.notFound}>Timesheet not found</Text>
       </AppLayout>
     );
   }
 
   const totalHours = week.days.reduce((sum, d) => sum + d.hours, 0);
-  const statusColor = statusColors[week.status] || colors.textSecondary;
-
   const showApprovalActions = week.status === 'Submitted' || week.status === 'Draft';
-
-  const handleEditDay = (d: { id: string; label: string; hours: number }) => {
-    navigation.navigate('DayTimesheetEntry', {
-      dayId: d.id,
-      dayLabel: d.label,
-      weekEndId: week.id,
-      weekEndLabel: week.label,
-      weekStart: week.weekStart,
-      onStandby: week.onStandby ?? 'No',
-      employeeIdForEdit: week.employeeId,
-      initialHours: d.hours,
-      initialDayData: d,
-    });
-  };
+  const cfg = STATUS_CONFIG[week.status] ?? STATUS_CONFIG.Submitted;
 
   const handleApprove = async () => {
     try {
@@ -117,13 +87,13 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
 
   const handleReject = async () => {
     if (!comment.trim()) {
-      Alert.alert('Comment required', 'Rejection comment is mandatory. Please explain why this timesheet is rejected.');
+      Alert.alert('Comment required', 'Please explain why this timesheet is being rejected.');
       return;
     }
     try {
       await setWeekStatus(week.id, 'Rejected', comment.trim());
       await refresh();
-      Alert.alert('Rejected', 'Timesheet rejected successfully.');
+      Alert.alert('Rejected', 'Timesheet rejected.');
       navigation.navigate('ManagerHome');
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to reject.');
@@ -133,166 +103,221 @@ const ManagerTimesheetDetailScreen: React.FC<Props> = ({ route, navigation }) =>
   const handleExport = async () => {
     const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
     const rows = week.days.map((d) =>
-      [
-        `"${week.employeeName || ''}"`,
-        `"${week.label}"`,
-        `"${week.weekStart}"`,
-        `"${d.label}"`,
-        d.hours.toFixed(2),
-        d.shiftType || '',
-        d.livingAway || '',
-        week.status,
-      ].join(',')
+      [`"${week.employeeName||''}"`, `"${week.label}"`, `"${week.weekStart}"`, `"${d.label}"`, d.hours.toFixed(2), d.shiftType||'', d.livingAway||'', week.status].join(',')
     );
-    const csv = [header, ...rows].join('\n');
-    await exportCsvAsFile(csv, `timesheet_${week.employeeName || 'export'}`);
+    await exportCsvAsFile([header, ...rows].join('\n'), `timesheet_${week.employeeName||'export'}`);
   };
 
   return (
     <AppLayout>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={Platform.OS === 'web'}
       >
-        <View style={styles.headerCard}>
-          <Text style={styles.employeeName}>{week.employeeName || 'Unknown'}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>{week.status}</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <View style={styles.summaryInfo}>
+              <Text style={styles.employeeName}>{week.employeeName || 'Unknown'}</Text>
+              <Text style={styles.weekRange}>{week.label} – {week.weekStart}</Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+              <Text style={[styles.statusText, { color: cfg.color }]}>{week.status}</Text>
+            </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{totalHours.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>Total Hours</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{week.days.filter((d) => d.hours > 0).length}</Text>
+              <Text style={styles.statLabel}>Days Worked</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{week.onStandby ?? '-'}</Text>
+              <Text style={styles.statLabel}>On Standby</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.metaCard}>
-          <Text style={styles.metaLabel}>Week</Text>
-          <Text style={styles.metaValue}>
-            {week.label} – {week.weekStart}
-          </Text>
-        </View>
-
-        <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Total Hours</Text>
-          <Text style={styles.totalValue}>{totalHours.toFixed(2)} h</Text>
-        </View>
-
-        {week.rejectionComment ? (
+        {week.rejectionComment && (
           <View style={styles.rejectCard}>
-            <Text style={styles.rejectLabel}>Rejection reason</Text>
+            <Text style={styles.rejectTitle}>Rejection Reason</Text>
             <Text style={styles.rejectText}>{week.rejectionComment}</Text>
           </View>
-        ) : null}
+        )}
 
-        <Text style={styles.sectionTitle}>Daily Entries</Text>
+        <Text style={styles.sectionLabel}>Daily Entries</Text>
         <View style={styles.daysCard}>
-          {week.days.map((d) => (
-            <TouchableOpacity key={d.id} style={styles.dayRow} onPress={() => handleEditDay(d)} activeOpacity={0.85}>
-              <View style={styles.dayMain}>
-                <View style={styles.dayMainRow}>
-                  <Text style={styles.dayLabel}>{d.label}</Text>
-                  <Text style={styles.dayHours}>{d.hours.toFixed(2)} h</Text>
-                </View>
-                {(d.shiftType || d.livingAway) && (
-                  <View style={styles.dayMetaRow}>
-                    {d.shiftType && <Text style={[styles.dayMetaText, { marginRight: 12 }]}>Shift: {d.shiftType}</Text>}
-                    {d.livingAway && <Text style={styles.dayMetaText}>LAFHA: {d.livingAway}</Text>}
-                  </View>
+          {week.days.map((d, index) => (
+            <TouchableOpacity
+              key={d.id}
+              style={[styles.dayRow, index === week.days.length - 1 && styles.dayRowLast]}
+              onPress={() => navigation.navigate('DayTimesheetEntry', {
+                dayId: d.id, dayLabel: d.label, weekEndId: week.id, weekEndLabel: week.label,
+                weekStart: week.weekStart, onStandby: week.onStandby ?? 'No',
+                employeeIdForEdit: week.employeeId, initialHours: d.hours, initialDayData: d,
+              })}
+              activeOpacity={0.8}
+            >
+              <View style={styles.dayInfo}>
+                <Text style={styles.dayLabel}>{d.label}</Text>
+                {d.jobNo && <Text style={styles.dayDetail}>Job: {d.jobNo}</Text>}
+                {d.location && <Text style={styles.dayDetail}>Location: {d.location}</Text>}
+                {(d.startTime || d.finishTime) && (
+                  <Text style={styles.dayDetail}>{d.startTime} – {d.finishTime}</Text>
                 )}
+                {d.shiftType && <Text style={styles.dayDetail}>Shift: {d.shiftType}  LAFHA: {d.livingAway || '-'}</Text>}
               </View>
-
-              <View style={styles.editPill}>
-                <Text style={styles.editPillText}>✏️ Edit</Text>
+              <View style={styles.dayRight}>
+                <Text style={[styles.dayHours, d.hours > 0 ? styles.dayHoursActive : styles.dayHoursZero]}>
+                  {d.hours.toFixed(2)} h
+                </Text>
+                <View style={styles.editChip}>
+                  <Text style={styles.editChipText}>Edit</Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        {showApprovalActions ? (
+        {showApprovalActions && (
           <>
-            <Text style={styles.sectionTitle}>Comment (required for rejection)</Text>
-
-            {/* ✅ FIX: wrapper view */}
-            <View style={styles.commentBox}>
-              <AppTextInput
-                label="Rejection comment"
-                placeholder="Required - explain why you are rejecting"
-                multiline
-                value={comment}
-                onChangeText={setComment}
-              />
-            </View>
-
-            <View style={[styles.actions, isNarrow && styles.actionsStack]}>
-              <View style={[styles.actionCol, isNarrow && styles.actionFull]}>
-                <AppButton label="✓ Approve" onPress={handleApprove} />
-              </View>
-              <View style={[styles.actionCol, isNarrow && styles.actionFull]}>
-                <AppButton label="✗ Reject" variant="secondary" onPress={handleReject} />
-              </View>
+            <Text style={styles.sectionLabel}>Approval Decision</Text>
+            <AppTextInput
+              label="Rejection Comment (required for rejection)"
+              placeholder="Explain why you are rejecting this timesheet..."
+              multiline
+              style={styles.commentInput}
+              value={comment}
+              onChangeText={setComment}
+            />
+            <View style={styles.decisionRow}>
+              <TouchableOpacity style={styles.approveBtn} onPress={handleApprove} activeOpacity={0.8}>
+                <Text style={styles.approveBtnText}>Approve</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.rejectBtn} onPress={handleReject} activeOpacity={0.8}>
+                <Text style={styles.rejectBtnText}>Reject</Text>
+              </TouchableOpacity>
             </View>
           </>
-        ) : null}
+        )}
 
-        <View style={{ marginTop: spacing.md }}>
-          <AppButton label="Export CSV" variant="secondary" onPress={handleExport} />
-        </View>
+        <AppButton label="Export CSV" variant="secondary" onPress={handleExport} fullWidth />
       </ScrollView>
     </AppLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: spacing.xl },
+  scroll: { paddingBottom: spacing.xl },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { ...typography.screenTitle, marginBottom: spacing.md },
-
-  headerCard: {
+  notFound: { fontSize: 17, fontFamily: 'Lato_400Regular', color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
+  summaryCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  summaryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing.md,
+    alignItems: 'flex-start',
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  employeeName: { ...typography.sectionTitle, fontSize: 18 },
-
-  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 10 },
-  statusText: { fontWeight: '700', fontSize: 14 },
-
-  metaCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+  summaryInfo: { flex: 1, paddingRight: spacing.sm },
+  employeeName: {
+    fontSize: 18,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
   },
-  metaLabel: { ...typography.body, marginBottom: spacing.xs, color: colors.textSecondary },
-  metaValue: { ...typography.sectionTitle },
-
-  totalCard: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+  weekRange: {
+    fontSize: 13,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginTop: 2,
   },
-  totalLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
-  totalValue: { color: '#fff', fontSize: 24, fontWeight: '800', marginTop: spacing.xs },
-
+  statusBadge: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  statusText: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+    gap: 0,
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: {
+    fontSize: 18,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginVertical: 2,
+  },
   rejectCard: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 14,
+    backgroundColor: colors.errorSurface,
+    borderRadius: 12,
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: `${colors.error}30`,
   },
-  rejectLabel: { ...typography.sectionTitle, marginBottom: spacing.xs, color: '#DC2626' },
-  rejectText: { ...typography.body, color: colors.textPrimary },
-
-  sectionTitle: { ...typography.sectionTitle, marginBottom: spacing.sm },
-
+  rejectTitle: {
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.error,
+    marginBottom: 4,
+  },
+  rejectText: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
+  },
   daysCard: {
     backgroundColor: colors.surface,
     borderRadius: 14,
@@ -302,38 +327,85 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   dayRow: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  dayMain: { flex: 1 },
-  dayMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dayMetaRow: { flexDirection: 'row', marginTop: 4 },
-  dayLabel: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
-  dayHours: { fontWeight: '800', color: colors.primary },
-  dayMetaText: { fontSize: 13, color: colors.textSecondary },
-
-  editPill: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: 10,
+  dayRowLast: { borderBottomWidth: 0 },
+  dayInfo: { flex: 1, paddingRight: spacing.sm },
+  dayLabel: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
-  editPillText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-
-  // ✅ NEW wrapper for AppTextInput
-  commentBox: {
+  dayDetail: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  dayRight: { alignItems: 'flex-end', gap: 4 },
+  dayHours: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+  },
+  dayHoursActive: { color: colors.success },
+  dayHoursZero: { color: colors.textMuted },
+  editChip: {
+    backgroundColor: colors.primarySurface,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  editChipText: {
+    fontSize: 11,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  commentInput: {
     minHeight: 90,
+    textAlignVertical: 'top',
+  },
+  decisionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginBottom: spacing.md,
   },
-
-  actions: { flexDirection: 'row', marginBottom: spacing.lg },
-  actionsStack: { flexDirection: 'column' },
-  actionCol: { flex: 1, marginRight: spacing.md },
-  actionFull: { marginRight: 0, marginBottom: spacing.md },
+  approveBtn: {
+    flex: 1,
+    backgroundColor: colors.success,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  approveBtnText: {
+    fontSize: 15,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  rejectBtn: {
+    flex: 1,
+    backgroundColor: colors.errorSurface,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: `${colors.error}50`,
+  },
+  rejectBtnText: {
+    fontSize: 15,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.error,
+  },
 });
 
 export default ManagerTimesheetDetailScreen;

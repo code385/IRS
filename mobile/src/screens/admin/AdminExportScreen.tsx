@@ -1,12 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
 } from 'react-native';
 import { exportCsvAsFile } from '../../utils/csvExport';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,7 +10,6 @@ import AppDropdown from '../../components/AppDropdown';
 import { useTimesheetStore, WeekTimesheet } from '../../store/timesheetStore';
 import { useUserStore } from '../../store/userStore';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<any>;
@@ -31,15 +24,10 @@ const AdminExportScreen: React.FC<Props> = () => {
   const [selectedWeekIds, setSelectedWeekIds] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
 
-  useEffect(() => {
-    loadWeeks();
-    loadUsers();
-  }, [loadWeeks, loadUsers]);
+  useEffect(() => { loadWeeks(); loadUsers(); }, [loadWeeks, loadUsers]);
 
   const employeesFromWeeks = Array.from(
-    new Map(
-      weeks.map((w) => [w.employeeId, { id: w.employeeId, name: w.employeeName || 'Unknown' }])
-    ).values()
+    new Map(weeks.map((w) => [w.employeeId, { id: w.employeeId, name: w.employeeName || 'Unknown' }])).values()
   );
   const employees = employeesFromWeeks.length > 0
     ? employeesFromWeeks
@@ -48,10 +36,7 @@ const AdminExportScreen: React.FC<Props> = () => {
   const selectedEmployee = employees.find((e) => e.name === selectedEmployeeName) || employees[0];
   const employeeWeeks = weeks.filter((w) => w.employeeId === selectedEmployee?.id);
 
-  useEffect(() => {
-    setSelectedWeekIds(new Set());
-  }, [selectedEmployee?.id]);
-
+  useEffect(() => { setSelectedWeekIds(new Set()); }, [selectedEmployee?.id]);
   useEffect(() => {
     if (employees.length > 0 && !selectedEmployeeName) {
       setSelectedEmployeeName(employees[0].name);
@@ -71,13 +56,9 @@ const AdminExportScreen: React.FC<Props> = () => {
     setSelectedWeekIds(new Set(employeeWeeks.map((w) => w.id)));
   }, [employeeWeeks]);
 
-  const clearSelection = useCallback(() => {
-    setSelectedWeekIds(new Set());
-  }, []);
-
   const handleExport = useCallback(async () => {
     if (!selectedEmployee || !employeeOptions.length) {
-      Alert.alert('Select employee', 'Please select an employee first. No timesheet data available.');
+      Alert.alert('Select employee', 'No timesheet data available.');
       return;
     }
     const toExport = employeeWeeks.filter((w) => selectedWeekIds.has(w.id));
@@ -85,34 +66,20 @@ const AdminExportScreen: React.FC<Props> = () => {
       Alert.alert('Select weeks', 'Please select at least one week to export.');
       return;
     }
-
     setIsExporting(true);
     try {
-      const rows: string[] = [];
       const header = 'Employee,Week End,Week Start,Day,Hours,Shift,LAFHA,Status';
-      rows.push(header);
-
+      const rows: string[] = [header];
       for (const week of toExport) {
         for (const d of week.days) {
-          rows.push(
-            [
-              `"${week.employeeName || selectedEmployee.name}"`,
-              `"${week.label}"`,
-              `"${week.weekStart}"`,
-              `"${d.label}"`,
-              d.hours.toFixed(2),
-              d.shiftType || '',
-              d.livingAway || '',
-              week.status,
-            ].join(',')
-          );
+          rows.push([
+            `"${week.employeeName || selectedEmployee.name}"`, `"${week.label}"`, `"${week.weekStart}"`,
+            `"${d.label}"`, d.hours.toFixed(2), d.shiftType || '', d.livingAway || '', week.status,
+          ].join(','));
         }
       }
-
-      const csv = rows.join('\n');
       const safeName = (selectedEmployee.name || 'employee').replace(/\s+/g, '_');
-      const filename = `timesheet_${safeName}_${toExport.length}weeks`;
-      await exportCsvAsFile(csv, filename);
+      await exportCsvAsFile(rows.join('\n'), `timesheet_${safeName}_${toExport.length}weeks`);
     } catch (e: any) {
       Alert.alert('Export failed', e?.message || 'Could not export.');
     } finally {
@@ -120,15 +87,11 @@ const AdminExportScreen: React.FC<Props> = () => {
     }
   }, [selectedEmployee, employeeWeeks, selectedWeekIds]);
 
-  const weeksForEmployee = weeks.filter((w) => w.employeeId === selectedEmployee?.id);
-
   return (
     <AppLayout>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Export Timesheet to CSV</Text>
-        <Text style={styles.subtitle}>
-          Select employee and weeks, then export
-        </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.pageTitle}>Export CSV</Text>
+        <Text style={styles.pageSubtitle}>Select an employee and weeks to export their timesheet data.</Text>
 
         <AppDropdown
           label="Employee"
@@ -140,58 +103,62 @@ const AdminExportScreen: React.FC<Props> = () => {
         />
 
         {employeeOptions.length === 0 && (
-          <Text style={styles.emptyHint}>No Timesheet data. Employees need to submit Timesheets first.</Text>
+          <View style={styles.emptyHint}>
+            <Text style={styles.emptyHintText}>No timesheet data available. Employees need to submit timesheets first.</Text>
+          </View>
         )}
 
-        {selectedEmployee && (
+        {selectedEmployee && employeeWeeks.length > 0 && (
           <>
-            <View style={styles.weekSection}>
-              <View style={styles.weekSectionHeader}>
-                <Text style={styles.sectionTitle}>Select weeks</Text>
-                <View style={styles.weekActions}>
-                  <TouchableOpacity onPress={selectAllWeeks}>
-                    <Text style={styles.link}>Select all</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.linkSep}>|</Text>
-                  <TouchableOpacity onPress={clearSelection}>
-                    <Text style={styles.link}>Clear</Text>
-                  </TouchableOpacity>
-                </View>
+            <View style={styles.weeksSectionHeader}>
+              <Text style={styles.sectionLabel}>Select Weeks</Text>
+              <View style={styles.weekActions}>
+                <TouchableOpacity onPress={selectAllWeeks} activeOpacity={0.75}>
+                  <Text style={styles.actionLink}>Select all</Text>
+                </TouchableOpacity>
+                <Text style={styles.actionSep}>·</Text>
+                <TouchableOpacity onPress={() => setSelectedWeekIds(new Set())} activeOpacity={0.75}>
+                  <Text style={styles.actionLink}>Clear</Text>
+                </TouchableOpacity>
               </View>
-
-              {weeksForEmployee.length === 0 ? (
-                <Text style={styles.emptyText}>No Timesheets for this employee</Text>
-              ) : (
-                weeksForEmployee.map((w) => {
-                  const totalHours = w.days.reduce((s, d) => s + d.hours, 0);
-                  const isSelected = selectedWeekIds.has(w.id);
-                  return (
-                    <TouchableOpacity
-                      key={w.id}
-                      style={[styles.weekRow, isSelected && styles.weekRowSelected]}
-                      onPress={() => toggleWeek(w.id)}
-                    >
-                      <Text style={styles.weekCheck}>{isSelected ? '☑' : '☐'}</Text>
-                      <View style={styles.weekInfo}>
-                        <Text style={styles.weekLabel}>
-                          {w.label} – {w.weekStart}
-                        </Text>
-                        <Text style={styles.weekMeta}>
-                          {totalHours.toFixed(1)} h | {w.status}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
             </View>
 
-            <AppButton
-              label={isExporting ? 'Exporting...' : `Export ${selectedWeekIds.size} week(s)`}
-              onPress={handleExport}
-              disabled={isExporting || selectedWeekIds.size === 0}
-            />
+            {employeeWeeks.map((w) => {
+              const totalHours = w.days.reduce((s, d) => s + d.hours, 0);
+              const isSelected = selectedWeekIds.has(w.id);
+              return (
+                <TouchableOpacity
+                  key={w.id}
+                  style={[styles.weekRow, isSelected && styles.weekRowSelected]}
+                  onPress={() => toggleWeek(w.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                    {isSelected && <View style={styles.checkboxInner} />}
+                  </View>
+                  <View style={styles.weekInfo}>
+                    <Text style={styles.weekLabel}>{w.label} – {w.weekStart}</Text>
+                    <Text style={styles.weekMeta}>{totalHours.toFixed(1)} hrs  ·  {w.status}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            <View style={styles.exportAction}>
+              <AppButton
+                label={isExporting ? 'Exporting...' : `Export ${selectedWeekIds.size} week${selectedWeekIds.size !== 1 ? 's' : ''}`}
+                onPress={handleExport}
+                disabled={isExporting || selectedWeekIds.size === 0}
+                fullWidth
+              />
+            </View>
           </>
+        )}
+
+        {selectedEmployee && employeeWeeks.length === 0 && (
+          <View style={styles.noWeeks}>
+            <Text style={styles.noWeeksText}>No timesheets found for this employee.</Text>
+          </View>
         )}
       </ScrollView>
     </AppLayout>
@@ -199,41 +166,123 @@ const AdminExportScreen: React.FC<Props> = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: spacing.xl },
-  title: { ...typography.screenTitle, marginBottom: spacing.xs },
-  subtitle: { ...typography.body, marginBottom: spacing.lg, color: colors.textSecondary },
-  emptyHint: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
-  weekSection: { marginBottom: spacing.lg },
-  weekSectionHeader: {
+  scroll: { paddingBottom: spacing.xl },
+  pageTitle: {
+    fontSize: 24,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginBottom: spacing.lg,
+  },
+  emptyHint: {
+    backgroundColor: colors.warningSurface,
+    borderRadius: 12,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: `${colors.warning}30`,
+    marginBottom: spacing.md,
+  },
+  emptyHintText: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.warning,
+  },
+  weeksSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
-  sectionTitle: { ...typography.sectionTitle },
-  weekActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  link: { color: colors.primary, fontSize: 14, fontWeight: '600' },
-  linkSep: { color: colors.textSecondary },
-  emptyText: { ...typography.body, color: colors.textSecondary, fontStyle: 'italic', marginTop: spacing.sm },
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  weekActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionLink: {
+    fontSize: 13,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  actionSep: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
   weekRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    marginBottom: spacing.xs,
-    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: spacing.sm,
+    borderWidth: 1.5,
     borderColor: colors.border,
+    gap: 12,
   },
   weekRowSelected: {
     borderColor: colors.primary,
-    backgroundColor: `${colors.primary}10`,
+    backgroundColor: colors.primarySurface,
   },
-  weekCheck: { fontSize: 18, marginRight: spacing.sm },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  checkboxInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
+  },
   weekInfo: { flex: 1 },
-  weekLabel: { ...typography.body, fontWeight: '500', color: colors.textPrimary },
-  weekMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  weekLabel: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  weekMeta: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  exportAction: { marginTop: spacing.sm },
+  noWeeks: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  noWeeksText: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
 });
 
 export default AdminExportScreen;

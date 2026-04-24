@@ -6,10 +6,10 @@ import { spacing } from '../theme/spacing';
 type Props = TextInputProps & {
   label: string;
   showPasswordToggle?: boolean;
+  error?: string;
 };
 
-/** Eye icon drawn with pure React Native Views — no external package needed */
-function EyeIcon({ hidden, size = 20, color = colors.textSecondary }: {
+function EyeIcon({ hidden, size = 20, color = colors.textMuted }: {
   hidden: boolean;
   size?: number;
   color?: string;
@@ -17,7 +17,6 @@ function EyeIcon({ hidden, size = 20, color = colors.textSecondary }: {
   const pupil = size * 0.28;
   return (
     <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-      {/* Eye oval outline */}
       <View style={{
         width: size * 0.92,
         height: size * 0.58,
@@ -27,7 +26,6 @@ function EyeIcon({ hidden, size = 20, color = colors.textSecondary }: {
         justifyContent: 'center',
         alignItems: 'center',
       }}>
-        {/* Pupil */}
         <View style={{
           width: pupil,
           height: pupil,
@@ -35,7 +33,6 @@ function EyeIcon({ hidden, size = 20, color = colors.textSecondary }: {
           backgroundColor: color,
         }} />
       </View>
-      {/* Strike-through line when password is visible (eye-off state) */}
       {!hidden && (
         <View style={{
           position: 'absolute',
@@ -50,7 +47,7 @@ function EyeIcon({ hidden, size = 20, color = colors.textSecondary }: {
   );
 }
 
-const AppTextInput: React.FC<Props> = memo(({ label, style, showPasswordToggle, secureTextEntry, ...rest }) => {
+const AppTextInput: React.FC<Props> = memo(({ label, style, showPasswordToggle, secureTextEntry, error, ...rest }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   const effectiveSecure = showPasswordToggle ? !passwordVisible : secureTextEntry;
@@ -58,11 +55,17 @@ const AppTextInput: React.FC<Props> = memo(({ label, style, showPasswordToggle, 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
-      <View style={showPasswordToggle ? styles.inputRow : undefined}>
+      <View style={[
+        styles.inputContainer,
+        !!error && styles.inputContainerError,
+        showPasswordToggle && styles.inputRow,
+      ]}>
         <TextInput
           style={[styles.input, showPasswordToggle && styles.inputWithIcon, style]}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textMuted}
           secureTextEntry={effectiveSecure}
+          underlineColorAndroid="transparent"
+          selectionColor={colors.primary}
           {...rest}
         />
         {showPasswordToggle && (
@@ -73,10 +76,11 @@ const AppTextInput: React.FC<Props> = memo(({ label, style, showPasswordToggle, 
             accessibilityRole="button"
             accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
           >
-            <EyeIcon hidden={!passwordVisible} />
+            <EyeIcon hidden={!passwordVisible} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
+      {!!error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 });
@@ -86,26 +90,36 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    marginBottom: spacing.xs,
-    fontWeight: '500',
+    marginBottom: 6,
+    fontSize: 12,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
     color: colors.textSecondary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
-  input: {
-    borderWidth: 1,
+  inputContainer: {
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    borderRadius: 12,
     backgroundColor: colors.surface,
-    color: colors.textPrimary,
+  },
+  inputContainerError: {
+    borderColor: colors.error,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    position: 'relative',
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 13,
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontFamily: 'Lato_400Regular',
   },
   inputWithIcon: {
-    flex: 1,
     paddingRight: 44,
   },
   eyeIcon: {
@@ -114,6 +128,12 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.error,
   },
 });
 

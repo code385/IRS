@@ -5,7 +5,6 @@ import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import AppButton from '../components/AppButton';
-import { typography } from '../theme/typography';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
@@ -23,33 +22,52 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoText}>IRS</Text>
+        <View style={styles.logoWrap}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoText}>IRS</Text>
+          </View>
         </View>
-        <Text style={styles.title}>IRS Timesheet</Text>
         <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
+        <Text style={styles.loadingText}>Loading your workspace...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.logoCircle}>
-        <Text style={styles.logoText}>IRS</Text>
+      <View style={styles.topSection}>
+        <View style={styles.logoWrap}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoText}>IRS</Text>
+          </View>
+          <View style={styles.logoDot} />
+        </View>
+        <Text style={styles.brand}>Infrastructure Renewal Services</Text>
+        <Text style={styles.tagline}>Timesheet & Approvals Platform</Text>
       </View>
-      <Text style={styles.title}>Infrastructure Renewal Services</Text>
-      <Text style={styles.subtitle}>Digital timesheet & approvals</Text>
 
-      <Text style={styles.intro}>
-        Manage employee timesheets, approvals, and reporting in one modern mobile experience. Built
-        for field teams, managers, and administrators.
-      </Text>
+      <View style={styles.middleSection}>
+        <View style={styles.featureRow}>
+          <View style={styles.featureDot} />
+          <Text style={styles.featureText}>Real-time timesheet submissions</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <View style={styles.featureDot} />
+          <Text style={styles.featureText}>Manager approvals & review workflow</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <View style={styles.featureDot} />
+          <Text style={styles.featureText}>Admin reporting & export</Text>
+        </View>
+      </View>
 
-      <View style={styles.loginBtnWrap}>
+      <View style={styles.bottomSection}>
         <AppButton
-          label="Login"
+          label="Get Started"
           onPress={() => navigation.navigate('Auth', { mode: 'login' })}
+          fullWidth
         />
+        <Text style={styles.version}>Version 1.0.2</Text>
       </View>
     </View>
   );
@@ -58,49 +76,110 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
     backgroundColor: colors.background,
+    paddingHorizontal: spacing.xl,
+    justifyContent: 'space-between',
+    paddingTop: 80,
+    paddingBottom: spacing.xl,
+  },
+  topSection: {
+    alignItems: 'center',
+    paddingTop: spacing.xl,
+  },
+  logoWrap: {
+    position: 'relative',
+    marginBottom: spacing.lg,
   },
   logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 88,
+    height: 88,
+    borderRadius: 24,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    elevation: 8,
   },
   logoText: {
     color: '#FFFFFF',
+    fontFamily: 'Lato_700Bold',
     fontWeight: '700',
-    fontSize: 24,
+    fontSize: 28,
+    letterSpacing: 1,
   },
-  title: {
-    ...typography.screenTitle,
+  logoDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  brand: {
+    fontSize: 20,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
-  subtitle: {
-    ...typography.body,
+  tagline: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
+    marginTop: 6,
+    letterSpacing: 0.2,
   },
-  intro: {
-    ...typography.body,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
+  middleSection: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 14,
   },
-  loginBtnWrap: {
-    width: '100%',
-    maxWidth: 320,
-    alignSelf: 'center',
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  featureText: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textSecondary,
+  },
+  bottomSection: {
+    gap: 8,
+    alignItems: 'center',
+  },
+  version: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginTop: 4,
   },
   spinner: {
     marginTop: spacing.xl,
   },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+  },
 });
 
 export default SplashScreen;
-

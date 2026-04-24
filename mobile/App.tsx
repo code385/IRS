@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useFonts, Lato_400Regular, Lato_700Bold } from '@expo-google-fonts/lato';
 import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { colors } from './src/theme/colors';
 import { useAuthStore } from './src/store/authStore';
 
@@ -80,9 +81,11 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <AppContent />
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 

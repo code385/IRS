@@ -1,17 +1,11 @@
 import React, { useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
+  View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AppLayout from '../../components/AppLayout';
 import { useTimesheetStore, WeekTimesheet } from '../../store/timesheetStore';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<any>;
@@ -21,58 +15,49 @@ const AdminRejectedDetailScreen: React.FC<Props> = ({ navigation }) => {
   const isLoading = useTimesheetStore((s) => s.isLoading);
   const loadWeeks = useTimesheetStore((s) => s.loadWeeks);
 
-  useEffect(() => {
-    loadWeeks();
-  }, [loadWeeks]);
+  useEffect(() => { loadWeeks(); }, [loadWeeks]);
 
   const rejected = weeks.filter((w) => w.status === 'Rejected');
-
-  const handleCardPress = useCallback(
-    (weekId: string) => {
-      navigation.navigate('AdminTimesheetDetail', { weekId });
-    },
-    [navigation],
-  );
 
   const renderCard = useCallback(
     ({ item }: { item: WeekTimesheet }) => {
       const totalHours = item.days.reduce((s, d) => s + d.hours, 0);
-
       return (
         <TouchableOpacity
           style={styles.card}
-          onPress={() => handleCardPress(item.id)}
-          activeOpacity={0.85}
+          onPress={() => navigation.navigate('AdminTimesheetDetail', { weekId: item.id })}
+          activeOpacity={0.8}
         >
-          <View style={styles.cardHeader}>
-            <Text style={styles.employee}>{item.employeeName || 'Unknown'}</Text>
-            <View style={[styles.badge, { backgroundColor: '#fecaca' }]}>
-              <Text style={[styles.badgeText, { color: '#DC2626' }]}>Rejected</Text>
+          <View style={styles.cardAccent} />
+          <View style={styles.cardBody}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.employeeName}>{item.employeeName || 'Unknown'}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>Rejected</Text>
+              </View>
             </View>
+            <Text style={styles.weekRange}>{item.label} – {item.weekStart}</Text>
+            <Text style={styles.hours}>{totalHours.toFixed(1)} hrs total</Text>
+            {item.rejectionComment && (
+              <View style={styles.reasonWrap}>
+                <Text style={styles.reasonLabel}>Rejection reason</Text>
+                <Text style={styles.reasonText} numberOfLines={2}>{item.rejectionComment}</Text>
+              </View>
+            )}
           </View>
-          <Text style={styles.week}>{item.label} – {item.weekStart}</Text>
-          <Text style={styles.hours}>Total: {totalHours.toFixed(1)} h</Text>
-          {item.rejectionComment && (
-            <View style={styles.rejectReason}>
-              <Text style={styles.rejectLabel}>Manager rejection reason:</Text>
-              <Text style={styles.rejectText}>{item.rejectionComment}</Text>
-            </View>
-          )}
         </TouchableOpacity>
       );
     },
-    [handleCardPress],
+    [navigation],
   );
 
   return (
     <AppLayout>
-      <Text style={styles.title}>Rejected Timesheets</Text>
-      <Text style={styles.subtitle}>Manager rejected – see reason below</Text>
-      {isLoading && (
-        <View style={styles.loading}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      )}
+      <Text style={styles.pageTitle}>Rejected Timesheets</Text>
+      <Text style={styles.pageSubtitle}>{rejected.length} timesheet{rejected.length !== 1 ? 's' : ''} rejected by manager</Text>
+
+      {isLoading && <View style={styles.loading}><ActivityIndicator size="small" color={colors.primary} /></View>}
+
       <FlatList
         data={rejected}
         keyExtractor={(item) => item.id}
@@ -81,7 +66,8 @@ const AdminRejectedDetailScreen: React.FC<Props> = ({ navigation }) => {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No Rejected Timesheets</Text>
+              <Text style={styles.emptyTitle}>No rejected timesheets</Text>
+              <Text style={styles.emptySubtitle}>All timesheets are in good standing.</Text>
             </View>
           ) : null
         }
@@ -91,41 +77,112 @@ const AdminRejectedDetailScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  title: { ...typography.screenTitle, marginBottom: spacing.xs },
-  subtitle: { ...typography.body, marginBottom: spacing.md, color: colors.textSecondary },
+  pageTitle: {
+    fontSize: 24,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+    marginTop: 2,
+  },
   loading: { paddingVertical: spacing.sm, alignItems: 'center' },
   list: { paddingBottom: spacing.xl },
   card: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
     borderRadius: 14,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#fecaca',
-    borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
+    borderColor: `${colors.error}30`,
+    overflow: 'hidden',
+    shadowColor: colors.error,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
   },
+  cardAccent: {
+    width: 4,
+    backgroundColor: colors.error,
+  },
+  cardBody: { flex: 1, padding: 14 },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 4,
   },
-  employee: { ...typography.sectionTitle, fontSize: 17 },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 8 },
-  badgeText: { fontWeight: '600', fontSize: 12 },
-  week: { ...typography.body, color: colors.textPrimary, marginBottom: spacing.xs },
-  hours: { fontWeight: '600', color: colors.primary },
-  rejectReason: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  employeeName: {
+    fontSize: 15,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    flex: 1,
   },
-  rejectLabel: { ...typography.body, fontWeight: '600', marginBottom: spacing.xs, color: '#DC2626' },
-  rejectText: { ...typography.body, color: colors.textPrimary },
-  empty: { paddingVertical: spacing.xl, alignItems: 'center' },
-  emptyText: { ...typography.body },
+  badge: {
+    backgroundColor: colors.errorSurface,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.error,
+  },
+  weekRange: {
+    fontSize: 12,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    marginBottom: 4,
+  },
+  hours: {
+    fontSize: 14,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  reasonWrap: {
+    marginTop: 8,
+    backgroundColor: colors.errorSurface,
+    borderRadius: 8,
+    padding: 8,
+  },
+  reasonLabel: {
+    fontSize: 11,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.error,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  reasonText: {
+    fontSize: 13,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textPrimary,
+  },
+  empty: { alignItems: 'center', paddingTop: 60 },
+  emptyTitle: {
+    fontSize: 17,
+    fontFamily: 'Lato_700Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    fontFamily: 'Lato_400Regular',
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
 });
 
 export default AdminRejectedDetailScreen;
